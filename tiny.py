@@ -65,24 +65,16 @@ def check_and_install_tinify():
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"tinify库安装失败：执行命令 {install_cmd} 出错，可尝试手动执行：sudo pip3 install tinify，错误信息：{str(e)}")
 
-
 check_and_install_tinify()
 import tinify
 
 
 def validate_tinify_key():
     tinify_api_key = TINIFY_API_KEY if TINIFY_API_KEY else os.getenv("TINIFY_API_KEY")
-    if not tinify_api_key:
-        raise EnvironmentError("未设置TINIFY_API_KEY环境变量，无法使用Tinify API压缩")
     tinify.key = tinify_api_key
     tinify.validate()
 
 def compress_image(input_path, output_path):
-    if not os.path.exists(input_path):
-        raise FileNotFoundError(f"图片文件不存在：{input_path}")
-    ext = os.path.splitext(input_path)[1].lower()
-    if ext not in SUPPORTED_FORMATS:
-        raise ValueError(f"不支持的图片格式：{ext}，仅支持{SUPPORTED_FORMATS}")
     out_dir = os.path.dirname(output_path)
     if out_dir and not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -117,17 +109,12 @@ def find_images_in_directory(directory, recursive=False):
                     image_files.append(path)
     return image_files
 
-def main():
-    if len(sys.argv) < 2:
-        print("请传入需要压缩的图片文件路径或目录（支持多个）", file=sys.stderr)
-        return 1
-
-    success_count = 0
-    fail_count = 0
-    skip_count = 0
-
+def parse_args(args):
+    """
+    解析命令行参数，返回目录到文件列表的映射
+    """
     dir_to_files = {}
-    for arg in sys.argv[1:]:
+    for arg in args:
         if os.path.isdir(arg):
             files = find_images_in_directory(arg)
             if files:
@@ -135,37 +122,47 @@ def main():
         else:
             dir_name = os.path.dirname(arg) or os.getcwd()
             dir_to_files.setdefault(dir_name, []).append(arg)
+    return dir_to_files
 
-    if not dir_to_files:
-        print("未找到需要压缩的图片文件。", file=sys.stderr)
-        return 1
-
+def prepare_output_dirs(dir_to_files):
+    """
+    为每个目录准备tinified输出目录，避免覆盖
+    """
     tinified_dirs = {}
-    for dir_name in dir_to_files:
-        base_tinified_dir = os.path.join(dir_name, "tinified")
-        tinified_dir = base_tinified_dir
-        count = 1
-        while os.path.exists(tinified_dir):
-            tinified_dir = f"{base_tinified_dir}({count})"
-            count += 1
-        os.makedirs(tinified_dir)
-        tinified_dirs[dir_name] = tinified_dir
-
-    try:
-        validate_tinify_key()
-    except EnvironmentError as e:
-        print(f"❌ {str(e)}", file=sys.stderr)
-        return 1
-    except tinify.AccountError as e:
-        print(f"❌ Tinify账号错误 - {str(e)}", file=sys.stderr)
-        return 1
-    except Exception as e:
-        print(f"❌ Tinify API Key校验失败：{str(e)}", file=sys.stderr)
-        return 1
-
+    has_supported = False
     for dir_name, files in dir_to_files.items():
-        tinified_dir = tinified_dirs[dir_name]
+        # 检查是否有支持格式的图片
+        supported_files = [f for f in files if os.path.splitext(f)[1].lower() in SUPPORTED_FORMATS]
+        if supported_files:
+            has_supported = True
+            base_tinified_dir = os.path.join(dir_name, "tinified")
+            tinified_dir = base_tinified_dir
+            count = 1
+            while os.path.exists(tinified_dir):
+                tinified_dir = f"{base_tinified_dir}({count})"
+                count += 1
+            os.makedirs(tinified_dir)
+            tinified_dirs[dir_name] = tinified_dir
+    return tinified_dirs, has_supported
+
+def compress_files(dir_to_files, tinified_dirs):
+    """
+    执行图片压缩，统计结果
+    """
+    success_count = 0
+    fail_count = 0
+    skip_count = 0
+    for dir_name, files in dir_to_files.items():
+        tinified_dir = tinified_dirs.get(dir_name)
         for file_path in files:
+            ext = os.path.splitext(file_path)[1].lower()
+            if ext not in SUPPORTED_FORMATS:
+                print(f"⏩ 跳过不支持格式：{file_path}", file=sys.stdout)
+                skip_count += 1
+                continue
+            if not tinified_dir:
+                # 没有tinified目录则跳过
+                continue
             file_name = os.path.basename(file_path)
             output_path = os.path.join(tinified_dir, file_name)
             try:
@@ -173,32 +170,40 @@ def main():
                 print(f"✅ 压缩完成：{result['output_path']}", file=sys.stdout)
                 print(f"📊 剩余Tinify额度：{result['remaining_quota']}/500", file=sys.stdout)
                 success_count += 1
-            except ValueError as e:
-                print(f"ℹ️ 跳过非支持格式文件 {file_path}：{str(e)}", file=sys.stdout)
-                skip_count += 1
-            except FileNotFoundError as e:
-                print(f"❌ 压缩失败 {file_path}：{str(e)}", file=sys.stderr)
-                fail_count += 1
-            except tinify.AccountError as e:
-                print(f"❌ 压缩失败 {file_path}：Tinify账号错误 - {str(e)}", file=sys.stderr)
-                fail_count += 1
-            except tinify.ClientError as e:
-                print(f"❌ 压缩失败 {file_path}：图片格式/内容错误 - {str(e)}", file=sys.stderr)
-                fail_count += 1
-            except tinify.ServerError as e:
-                print(f"❌ 压缩失败 {file_path}：Tinify服务器错误 - {str(e)}", file=sys.stderr)
-                fail_count += 1
             except Exception as e:
                 print(f"❌ 压缩失败 {file_path}：{str(e)}", file=sys.stderr)
                 fail_count += 1
-
     print(f"\n📈 压缩完成 - 成功：{success_count} | 失败：{fail_count} | 跳过非支持格式：{skip_count}", file=sys.stdout)
     return 0 if fail_count == 0 else 1
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("请传入需要压缩的图片文件路径或目录（支持多个）", file=sys.stderr)
+        return 1
+
+    dir_to_files = parse_args(sys.argv[1:])
+    if not dir_to_files:
+        print("未找到需要压缩的图片文件。", file=sys.stderr)
+        return 1
+
+    tinified_dirs, has_supported = prepare_output_dirs(dir_to_files)
+    if not has_supported:
+        raise RuntimeError("图片格式不支持，仅支持['.avif', '.webp', '.png', '.jpg', '.jpeg']")
+
+    try:
+        validate_tinify_key()
+    except Exception as e:
+        print(f"❌ Tinify API Key校验失败：{str(e)}", file=sys.stderr)
+        return 1
+    
+    return compress_files(dir_to_files, tinified_dirs)
+
 
 if __name__ == "__main__":
     try:
         exit_code = main()
         sys.exit(exit_code)
     except Exception as e:
-        print(f"💥 程序执行失败：{str(e)}", file=sys.stderr)
+        print(f"❌ 压缩失败：{str(e)}", file=sys.stderr)
         sys.exit(1)
