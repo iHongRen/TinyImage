@@ -133,50 +133,77 @@ def compress_image(input_path):
     # 5. 执行压缩
     return compress_image_with_tinify(input_path)
 
+
+def find_images_in_directory(directory, recursive=True):
+    """
+    查找目录下所有支持格式的图片文件
+    :param directory: 目录路径
+    :param recursive: 是否递归子目录
+    :return: 图片文件路径列表
+    """
+    image_files = []
+    if recursive:
+        for root, _, files in os.walk(directory):
+            for f in files:
+                ext = os.path.splitext(f)[1].lower()
+                if ext in SUPPORTED_FORMATS:
+                    image_files.append(os.path.join(root, f))
+    else:
+        for f in os.listdir(directory):
+            path = os.path.join(directory, f)
+            if os.path.isfile(path):
+                ext = os.path.splitext(f)[1].lower()
+                if ext in SUPPORTED_FORMATS:
+                    image_files.append(path)
+    return image_files
+
 def main():
-    """主函数：批量压缩、异常捕获"""
-    # 校验输入参数
+    """主函数：批量压缩、异常捕获，支持目录参数"""
     if len(sys.argv) < 2:
-        raise ValueError("请传入需要压缩的图片文件路径（支持多个）")
+        raise ValueError("请传入需要压缩的图片文件路径或目录（支持多个）")
 
     # 初始化统计
     success_count = 0
     fail_count = 0
     skip_count = 0
+    all_files = []
 
-    # 批量压缩
-    for file_path in sys.argv[1:]:
+    # 支持传入文件或目录，目录递归查找图片
+    for arg in sys.argv[1:]:
+        if os.path.isdir(arg):
+            all_files.extend(find_images_in_directory(arg, recursive=True))
+        else:
+            all_files.append(arg)
+
+    if not all_files:
+        print("未找到需要压缩的图片文件。", file=sys.stderr)
+        return 1
+
+    for file_path in all_files:
         try:
             result = compress_image(file_path)
             print(f"✅ 压缩完成：{result['output_path']}", file=sys.stdout)
             print(f"📊 剩余Tinify额度：{result['remaining_quota']}/500", file=sys.stdout)
             success_count += 1
         except ValueError as e:
-            # 格式不支持，跳过
             print(f"ℹ️ 跳过非支持格式文件 {file_path}：{str(e)}", file=sys.stdout)
             skip_count += 1
         except EnvironmentError as e:
-            # 无API Key，直接失败
             print(f"❌ 压缩失败 {file_path}：{str(e)}", file=sys.stderr)
             fail_count += 1
         except tinify.AccountError as e:
-            # API Key无效/额度用尽
             print(f"❌ 压缩失败 {file_path}：Tinify账号错误 - {str(e)}", file=sys.stderr)
             fail_count += 1
         except tinify.ClientError as e:
-            # 图片格式/内容错误
             print(f"❌ 压缩失败 {file_path}：图片格式/内容错误 - {str(e)}", file=sys.stderr)
             fail_count += 1
         except tinify.ServerError as e:
-            # Tinify服务器错误
             print(f"❌ 压缩失败 {file_path}：Tinify服务器错误 - {str(e)}", file=sys.stderr)
             fail_count += 1
         except Exception as e:
-            # 其他未知错误
             print(f"❌ 压缩失败 {file_path}：{str(e)}", file=sys.stderr)
             fail_count += 1
 
-    # 输出汇总
     print(f"\n📈 压缩完成 - 成功：{success_count} | 失败：{fail_count} | 跳过非支持格式：{skip_count}", file=sys.stdout)
     return 0 if fail_count == 0 else 1
 
