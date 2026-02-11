@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import importlib.util
+import locale
 import os
 import subprocess
 import sys
@@ -12,12 +13,27 @@ TINIFY_API_KEY = None  # 可在此处直接设置API Key，例如：'YOUR_API_KE
 # 定义Tinify支持的图片格式（小写）
 SUPPORTED_FORMATS = ['.avif', '.webp', '.png', '.jpg', '.jpeg']
 
+# ==== 简单中英文提示支持 =========================
+def get_lang():
+    lang = os.getenv("LANG", "").lower()
+    if not lang:
+        try:
+            locale.setlocale(locale.LC_ALL, '')
+            lang_tuple = locale.getlocale()
+            lang = lang_tuple[0] or ""
+        except Exception:
+            lang = ""
+    if lang.startswith("zh"):
+        return "zh"
+    return "en"
+
+LANG = get_lang()
+
+
+def _(zh, en):
+    return zh if LANG == "zh" else en
+
 def get_pip_command():
-    """
-    自动检测当前Python环境对应的pip命令
-    优先级：python -m pip > pip3 > pip
-    :return: 可用的pip命令列表
-    """
     pip_cmd = [sys.executable, "-m", "pip"]
     try:
         subprocess.check_call(
@@ -47,12 +63,12 @@ def get_pip_command():
         )
         return pip_cmd
     except (subprocess.CalledProcessError, FileNotFoundError):
-        raise RuntimeError("未找到可用的pip/pip3命令，请先安装Python包管理工具")
+        raise RuntimeError(_("未找到可用的pip/pip3命令，请先安装Python包管理工具", "No available pip/pip3 command found, please install Python package management tools"))
 
 def check_and_install_tinify():
     tinify_spec = importlib.util.find_spec("tinify")
     if tinify_spec is None:
-        print("⚠️ 未检测到tinify库，正在自动安装...", file=sys.stdout)
+        print(_("未检测到tinify库，正在自动安装...", "tinify library not found, installing automatically..."), file=sys.stdout)
         pip_cmd = get_pip_command()
         install_cmd = pip_cmd + ["install", "tinify"]
         try:
@@ -61,9 +77,12 @@ def check_and_install_tinify():
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.STDOUT
             )
-            print("✅ tinify库安装成功！", file=sys.stdout)
+            print(_("tinify库安装成功！", "tinify library installed successfully!"), file=sys.stdout)
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"tinify库安装失败：执行命令 {install_cmd} 出错，可尝试手动执行：sudo pip3 install tinify，错误信息：{str(e)}")
+            raise RuntimeError(_(
+                f"tinify库安装失败：执行命令 {install_cmd} 出错，可尝试手动执行：sudo pip3 install tinify，错误信息：{str(e)}",
+                f"tinify library installation failed: error running {install_cmd}. Try manually: sudo pip3 install tinify. Error: {str(e)}"
+            ))
 
 check_and_install_tinify()
 import tinify
@@ -87,12 +106,6 @@ def compress_image(input_path, output_path):
     }
 
 def find_images_in_directory(directory, recursive=False):
-    """
-    查找目录下所有支持格式的图片文件
-    :param directory: 目录路径
-    :param recursive: 是否递归子目录
-    :return: 图片文件路径列表
-    """
     image_files = []
     if recursive:
         for root, _, files in os.walk(directory):
@@ -110,9 +123,6 @@ def find_images_in_directory(directory, recursive=False):
     return image_files
 
 def parse_args(args):
-    """
-    解析命令行参数，返回目录到文件列表的映射
-    """
     dir_to_files = {}
     for arg in args:
         if os.path.isdir(arg):
@@ -125,13 +135,9 @@ def parse_args(args):
     return dir_to_files
 
 def prepare_output_dirs(dir_to_files):
-    """
-    为每个目录准备tinified输出目录，避免覆盖
-    """
     tinified_dirs = {}
     has_supported = False
     for dir_name, files in dir_to_files.items():
-        # 检查是否有支持格式的图片
         supported_files = [f for f in files if os.path.splitext(f)[1].lower() in SUPPORTED_FORMATS]
         if supported_files:
             has_supported = True
@@ -146,9 +152,6 @@ def prepare_output_dirs(dir_to_files):
     return tinified_dirs, has_supported
 
 def compress_files(dir_to_files, tinified_dirs):
-    """
-    执行图片压缩，统计结果
-    """
     success_count = 0
     fail_count = 0
     skip_count = 0
@@ -157,44 +160,49 @@ def compress_files(dir_to_files, tinified_dirs):
         for file_path in files:
             ext = os.path.splitext(file_path)[1].lower()
             if ext not in SUPPORTED_FORMATS:
-                print(f"⏩ 跳过不支持格式：{file_path}", file=sys.stdout)
+                print(_(f"跳过不支持格式：{file_path}", f"Skipped unsupported format: {file_path}"), file=sys.stdout)
                 skip_count += 1
                 continue
             if not tinified_dir:
-                # 没有tinified目录则跳过
                 continue
             file_name = os.path.basename(file_path)
             output_path = os.path.join(tinified_dir, file_name)
             try:
                 result = compress_image(file_path, output_path)
-                print(f"✅ 压缩完成：{result['output_path']}", file=sys.stdout)
-                print(f"📊 剩余Tinify额度：{result['remaining_quota']}/500", file=sys.stdout)
+                print(_(f"✅ 压缩完成：{result['output_path']}", f"✅ Compressed: {result['output_path']}"), file=sys.stdout)
+                print(_(f"📊 剩余Tinify额度：{result['remaining_quota']}/500", f"📊 Remaining Tinify quota: {result['remaining_quota']}/500"), file=sys.stdout)
                 success_count += 1
             except Exception as e:
-                print(f"❌ 压缩失败 {file_path}：{str(e)}", file=sys.stderr)
+                print(_(f"压缩失败 {file_path}：{str(e)}", f"Compression failed {file_path}: {str(e)}"), file=sys.stderr)
                 fail_count += 1
-    print(f"\n📈 压缩完成 - 成功：{success_count} | 失败：{fail_count} | 跳过非支持格式：{skip_count}", file=sys.stdout)
+    print(_(
+        f"\n压缩完成 - 成功：{success_count} | 失败：{fail_count} | 跳过非支持格式：{skip_count}",
+        f"\nCompression finished - Success: {success_count} | Failed: {fail_count} | Skipped unsupported: {skip_count}"
+    ), file=sys.stdout)
     return 0 if fail_count == 0 else 1
 
 
 def main():
     if len(sys.argv) < 2:
-        print("请传入需要压缩的图片文件路径或目录（支持多个）", file=sys.stderr)
+        print(_("请传入需要压缩的图片文件路径或目录（支持多个）", "Please provide image file paths or directories to compress (multiple supported)"), file=sys.stderr)
         return 1
 
     dir_to_files = parse_args(sys.argv[1:])
     if not dir_to_files:
-        print("未找到需要压缩的图片文件。", file=sys.stderr)
+        print(_("未找到需要压缩的图片文件。", "No image files found to compress."), file=sys.stderr)
         return 1
 
     tinified_dirs, has_supported = prepare_output_dirs(dir_to_files)
     if not has_supported:
-        raise RuntimeError("图片格式不支持，仅支持['.avif', '.webp', '.png', '.jpg', '.jpeg']")
+        raise RuntimeError(_(
+            "图片格式不支持，仅支持['.avif', '.webp', '.png', '.jpg', '.jpeg']",
+            "Image format not supported. Only ['.avif', '.webp', '.png', '.jpg', '.jpeg'] are supported."
+        ))
 
     try:
         validate_tinify_key()
     except Exception as e:
-        print(f"❌ Tinify API Key校验失败：{str(e)}", file=sys.stderr)
+        print(_(f"Tinify API Key校验失败：{str(e)}", f"Tinify API Key validation failed: {str(e)}"), file=sys.stderr)
         return 1
     
     return compress_files(dir_to_files, tinified_dirs)
@@ -205,5 +213,5 @@ if __name__ == "__main__":
         exit_code = main()
         sys.exit(exit_code)
     except Exception as e:
-        print(f"❌ 压缩失败：{str(e)}", file=sys.stderr)
+        print(_(f"压缩失败：{str(e)}", f"Compression failed: {str(e)}"), file=sys.stderr)
         sys.exit(1)
