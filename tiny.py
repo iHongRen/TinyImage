@@ -87,11 +87,16 @@ def compress_image_with_tinify(input_path):
     # 生成输出路径
     dir_name, file_name = os.path.split(input_path)
     
-    # 创建tinified目录
-    tinified_dir = os.path.join(dir_name, "tinified")
-    if not os.path.exists(tinified_dir):
-        os.makedirs(tinified_dir)
-    
+
+    # 创建tinified目录，若已存在则递增为tinified(1)、tinified(2)...
+    base_tinified_dir = os.path.join(dir_name, "tinified")
+    tinified_dir = base_tinified_dir
+    count = 1
+    while os.path.exists(tinified_dir):
+        tinified_dir = f"{base_tinified_dir}({count})"
+        count += 1
+    os.makedirs(tinified_dir)
+
     # 输出文件使用原图片名
     output_path = os.path.join(tinified_dir, file_name)
 
