@@ -1,0 +1,189 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import importlib.util
+import os
+import subprocess
+import sys
+
+# 定义Tinify支持的图片格式（小写）
+SUPPORTED_FORMATS = ['.avif', '.webp', '.png', '.jpg', '.jpeg']
+
+def get_pip_command():
+    """
+    自动检测当前Python环境对应的pip命令
+    优先级：python -m pip > pip3 > pip
+    :return: 可用的pip命令列表
+    """
+    # 优先使用 python -m pip（最可靠）
+    pip_cmd = [sys.executable, "-m", "pip"]
+    try:
+        subprocess.check_call(
+            pip_cmd + ["--version"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        return pip_cmd
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+
+    # 尝试pip3
+    pip_cmd = ["pip3"]
+    try:
+        subprocess.check_call(
+            pip_cmd + ["--version"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        return pip_cmd
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+
+    # 最后尝试pip
+    pip_cmd = ["pip"]
+    try:
+        subprocess.check_call(
+            pip_cmd + ["--version"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        return pip_cmd
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        raise RuntimeError("未找到可用的pip/pip3命令，请先安装Python包管理工具")
+
+def check_and_install_tinify():
+    """检查并安装tinify库（必须依赖）"""
+    # 检查tinify是否安装
+    tinify_spec = importlib.util.find_spec("tinify")
+    if tinify_spec is None:
+        print("⚠️ 未检测到tinify库，正在自动安装...", file=sys.stdout)
+        pip_cmd = get_pip_command()
+        # 移除--user参数，安装到全局目录
+        install_cmd = pip_cmd + ["install", "tinify"]  # 关键修改：删掉--user
+        try:
+            subprocess.check_call(
+                install_cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.STDOUT
+            )
+            print("✅ tinify库安装成功！", file=sys.stdout)
+        except subprocess.CalledProcessError as e:
+            # 安装失败时提示用sudo重试
+            raise RuntimeError(f"tinify库安装失败：执行命令 {install_cmd} 出错，可尝试手动执行：sudo pip3 install tinify，错误信息：{str(e)}")
+
+# 自动检查并安装tinify（必须依赖）
+check_and_install_tinify()
+
+# 导入tinify库
+import tinify
+
+
+def compress_image_with_tinify(input_path):
+    """
+    使用Tinify API压缩图片
+    仅处理AVIF、WebP、PNG、JPEG格式
+    :param input_path: 原图片路径
+    :return: 压缩结果字典
+    """
+    # 生成输出路径
+    dir_name, file_name = os.path.split(input_path)
+    
+    # 创建tinified目录
+    tinified_dir = os.path.join(dir_name, "tinified")
+    if not os.path.exists(tinified_dir):
+        os.makedirs(tinified_dir)
+    
+    # 输出文件使用原图片名
+    output_path = os.path.join(tinified_dir, file_name)
+
+    # 调用Tinify API压缩（原生支持目标格式）
+    source = tinify.from_file(input_path)
+    source.to_file(output_path)
+
+    return {
+        "input_path": input_path,
+        "output_path": output_path,
+        "remaining_quota": tinify.compression_count
+    }
+
+def compress_image(input_path):
+    """
+    压缩图片
+    :param input_path: 原图片路径
+    :return: 压缩结果字典
+    :raises: FileNotFoundError/ValueError/tinify相关异常
+    """
+    # 1. 校验文件是否存在
+    if not os.path.exists(input_path):
+        raise FileNotFoundError(f"图片文件不存在：{input_path}")
+
+    # 2. 校验格式是否支持
+    ext = os.path.splitext(input_path)[1].lower()
+    if ext not in SUPPORTED_FORMATS:
+        raise ValueError(f"不支持的图片格式：{ext}，仅支持{SUPPORTED_FORMATS}")
+
+    # 3. 校验API Key是否存在
+    tinify_api_key = os.getenv("TINIFY_API_KEY")
+    if not tinify_api_key:
+        raise EnvironmentError("未设置TINIFY_API_KEY环境变量，无法使用Tinify API压缩")
+
+    # 4. 初始化并校验API Key
+    tinify.key = tinify_api_key
+    tinify.validate()  # 校验Key有效性，无效会抛出AccountError
+
+    # 5. 执行压缩
+    return compress_image_with_tinify(input_path)
+
+def main():
+    """主函数：批量压缩、异常捕获"""
+    # 校验输入参数
+    if len(sys.argv) < 2:
+        raise ValueError("请传入需要压缩的图片文件路径（支持多个）")
+
+    # 初始化统计
+    success_count = 0
+    fail_count = 0
+    skip_count = 0
+
+    # 批量压缩
+    for file_path in sys.argv[1:]:
+        try:
+            result = compress_image(file_path)
+            print(f"✅ 压缩完成：{result['output_path']}", file=sys.stdout)
+            print(f"📊 剩余Tinify额度：{result['remaining_quota']}/500", file=sys.stdout)
+            success_count += 1
+        except ValueError as e:
+            # 格式不支持，跳过
+            print(f"ℹ️ 跳过非支持格式文件 {file_path}：{str(e)}", file=sys.stdout)
+            skip_count += 1
+        except EnvironmentError as e:
+            # 无API Key，直接失败
+            print(f"❌ 压缩失败 {file_path}：{str(e)}", file=sys.stderr)
+            fail_count += 1
+        except tinify.AccountError as e:
+            # API Key无效/额度用尽
+            print(f"❌ 压缩失败 {file_path}：Tinify账号错误 - {str(e)}", file=sys.stderr)
+            fail_count += 1
+        except tinify.ClientError as e:
+            # 图片格式/内容错误
+            print(f"❌ 压缩失败 {file_path}：图片格式/内容错误 - {str(e)}", file=sys.stderr)
+            fail_count += 1
+        except tinify.ServerError as e:
+            # Tinify服务器错误
+            print(f"❌ 压缩失败 {file_path}：Tinify服务器错误 - {str(e)}", file=sys.stderr)
+            fail_count += 1
+        except Exception as e:
+            # 其他未知错误
+            print(f"❌ 压缩失败 {file_path}：{str(e)}", file=sys.stderr)
+            fail_count += 1
+
+    # 输出汇总
+    print(f"\n📈 压缩完成 - 成功：{success_count} | 失败：{fail_count} | 跳过非支持格式：{skip_count}", file=sys.stdout)
+    return 0 if fail_count == 0 else 1
+
+if __name__ == "__main__":
+    try:
+        exit_code = main()
+        sys.exit(exit_code)
+    except Exception as e:
+        print(f"💥 程序执行失败：{str(e)}", file=sys.stderr)
+        sys.exit(1)
