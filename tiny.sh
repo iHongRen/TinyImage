@@ -8,6 +8,12 @@
 TINIFY_API_KEY_HARDCODED=""  # 可在此处直接设置API Key
 DEBUG_MODE="${DEBUG:-0}"     # 设置为1启用调试模式
 
+# 成功后的提示方式配置
+# "dialog" - 弹窗提示（默认）
+# "notification" - 系统通知
+# "none" - 不显示提示
+SUCCESS_NOTIFICATION_TYPE="${SUCCESS_NOTIFICATION_TYPE:-dialog}"
+
 # 支持的图片格式
 SUPPORTED_FORMATS=("jpg" "jpeg" "png" "webp" "avif")
 
@@ -73,6 +79,56 @@ log_debug() {
 }
 
 # ==== 通知函数 ====
+show_folder_dialog() {
+    local title="$1"
+    local message="$2"
+    local folder_path="$3"
+    
+    # 检查是否在 macOS 上
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        if [ -n "$folder_path" ] && [ -d "$folder_path" ]; then
+            # 准备国际化的对话框文本
+            local dialog_text
+            local cancel_text
+            local open_text
+            if [ "$LANG_CODE" = "zh" ]; then
+                dialog_text="是否打开压缩后的文件夹？"
+                cancel_text="取消"
+                open_text="打开文件夹"
+            else
+                dialog_text="Open the compressed folder?"
+                cancel_text="Cancel"
+                open_text="Open Folder"
+            fi
+            
+            # 使用 AppleScript 在屏幕右上角显示对话框
+            osascript << EOF 2>/dev/null || true
+-- 获取屏幕尺寸
+tell application "Finder"
+    set screenBounds to bounds of window of desktop
+    set screenWidth to item 3 of screenBounds
+    set screenHeight to item 4 of screenBounds
+end tell
+
+-- 计算右上角位置 (距离右边和上边各50像素)
+set dialogX to screenWidth - 400
+set dialogY to 50
+
+-- 显示对话框在指定位置
+activate
+set openFolder to display dialog "$title" & return & return & "$message" & return & return & "$dialog_text" buttons {"$cancel_text", "$open_text"} default button 2 with icon note giving up after 10
+
+if button returned of openFolder is "$open_text" then
+    tell application "Finder"
+        open folder (POSIX file "$folder_path")
+        activate
+    end tell
+end if
+EOF
+        fi
+    fi
+}
+
 send_notification() {
     local title="$1"
     local message="$2"
@@ -85,9 +141,45 @@ send_notification() {
     fi
 }
 
+show_success_notification() {
+    local title="$1"
+    local message="$2"
+    local folder_path="$3"
+    
+    case "$SUCCESS_NOTIFICATION_TYPE" in
+        "dialog")
+            show_folder_dialog "$title" "$message" "$folder_path"
+            ;;
+        "notification")
+            if [ -n "$folder_path" ] && [ -d "$folder_path" ] && command -v terminal-notifier >/dev/null 2>&1; then
+                # 使用 terminal-notifier 发送可点击的通知
+                terminal-notifier -title "$title" -message "$message" -sound "Glass" -execute "open '$folder_path'" -timeout 10 2>/dev/null || true
+            else
+                # 普通系统通知
+                send_notification "$title" "$message" "Glass"
+            fi
+            ;;
+        "none")
+            # 不显示任何通知
+            ;;
+        *)
+            # 默认使用弹窗
+            show_folder_dialog "$title" "$message" "$folder_path"
+            ;;
+    esac
+}
+
 show_usage() {
     log_info "用法: $0 <图片文件或目录> [图片文件或目录...]" "Usage: $0 <image_file_or_directory> [image_file_or_directory...]"
     log_info "支持格式: ${SUPPORTED_FORMATS[*]}" "Supported formats: ${SUPPORTED_FORMATS[*]}"
+    log_info "" ""
+    log_info "环境变量配置:" "Environment Variables:"
+    log_info "  TINIFY_API_KEY - Tinify API 密钥" "  TINIFY_API_KEY - Tinify API key"
+    log_info "  DEBUG - 设置为1启用调试模式" "  DEBUG - Set to 1 to enable debug mode"
+    log_info "  SUCCESS_NOTIFICATION_TYPE - 成功后的提示方式:" "  SUCCESS_NOTIFICATION_TYPE - Success notification type:"
+    log_info "    dialog - 弹窗提示（默认）" "    dialog - Dialog prompt (default)"
+    log_info "    notification - 系统通知" "    notification - System notification"
+    log_info "    none - 不显示提示" "    none - No notification"
 }
 
 # ==== 检查依赖 ====
@@ -296,6 +388,7 @@ process_files() {
     local success_count=0
     local fail_count=0
     local skip_count=0
+    local last_output_dir=""  # 跟踪最后一个输出目录
     
     # 创建临时文件来存储目录和文件的映射
     local temp_dir_list=$(mktemp)
@@ -351,6 +444,7 @@ process_files() {
                 done
                 
                 mkdir -p "$tinified_dir"
+                last_output_dir="$tinified_dir"  # 记录输出目录
                 
                 # 处理该目录中的文件
                 grep "^$dir|" "$temp_file_list" | while IFS='|' read -r file_dir file_path; do
@@ -397,20 +491,23 @@ process_files() {
     log_info "" ""
     log_info "压缩完成 - 成功: $success_count | 失败: $fail_count | 跳过非支持格式: $skip_count" "Compression finished - Success: $success_count | Failed: $fail_count | Skipped unsupported: $skip_count"
     
-    # 发送系统通知
-    if [ "$success_count" -gt 0 ]; then
+    # 显示成功通知（根据配置）
+    if [ "$success_count" -gt 0 ] && [ -n "$last_output_dir" ]; then
+        local title=$(msg "TinyImage 压缩完成" "TinyImage Compression Complete")
+        local message
         if [ "$fail_count" -eq 0 ]; then
-            # 全部成功
-            send_notification "$(msg "TinyImage 压缩完成" "TinyImage Compression Complete")" "$(msg "成功压缩 $success_count 张图片" "Successfully compressed $success_count images")" "Glass"
+            message=$(msg "成功压缩 $success_count 张图片" "Successfully compressed $success_count images")
         else
-            # 部分成功
-            send_notification "$(msg "TinyImage 压缩完成" "TinyImage Compression Complete")" "$(msg "成功: $success_count | 失败: $fail_count" "Success: $success_count | Failed: $fail_count")" "default"
+            message=$(msg "成功: $success_count | 失败: $fail_count" "Success: $success_count | Failed: $fail_count")
         fi
-    else
-        # 全部失败或无文件处理
-        if [ "$fail_count" -gt 0 ]; then
-            send_notification "$(msg "TinyImage 压缩失败" "TinyImage Compression Failed")" "$(msg "压缩失败，请检查文件和网络连接" "Compression failed, please check files and network")" "Basso"
-        fi
+        show_success_notification "$title" "$message" "$last_output_dir"
+    fi
+    
+    # 显示错误通知（始终使用系统通知）
+    if [ "$fail_count" -gt 0 ] && [ "$success_count" -eq 0 ]; then
+        local title=$(msg "TinyImage 压缩失败" "TinyImage Compression Failed")
+        local message=$(msg "压缩失败，请检查文件和网络连接" "Compression failed, please check files and network")
+        send_notification "$title" "$message" "Basso"
     fi
     
     if [ "$fail_count" -eq 0 ]; then
