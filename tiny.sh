@@ -20,22 +20,34 @@ DEBUG_MODE="${DEBUG:-0}"     # 设置为1启用调试模式
 get_env_from_profiles() {
     local var_name="$1"
     local value=""
-    # ~/.zshrc
-    if [ -f "$HOME/.zshrc" ]; then
-        value=$(grep -E "^export $var_name=" "$HOME/.zshrc" 2>/dev/null | sed -E "s/^export $var_name=//" | sed -E "s/^['\"]?(.*)['\"]?$/\1/")
-    fi
-    # ~/.bash_profile
-    if [ -z "$value" ] && [ -f "$HOME/.bash_profile" ]; then
-        value=$(grep -E "^export $var_name=" "$HOME/.bash_profile" 2>/dev/null | sed -E "s/^export $var_name=//" | sed -E "s/^['\"]?(.*)['\"]?$/\1/")
-    fi
-    # ~/.bashrc
-    if [ -z "$value" ] && [ -f "$HOME/.bashrc" ]; then
-        value=$(grep -E "^export $var_name=" "$HOME/.bashrc" 2>/dev/null | sed -E "s/^export $var_name=//" | sed -E "s/^['\"]?(.*)['\"]?$/\1/")
-    fi
-    # ~/.profile
-    if [ -z "$value" ] && [ -f "$HOME/.profile" ]; then
-        value=$(grep -E "^export $var_name=" "$HOME/.profile" 2>/dev/null | sed -E "s/^export $var_name=//" | sed -E "s/^['\"]?(.*)['\"]?$/\1/")
-    fi
+
+    for profile in "$HOME/.zshrc" "$HOME/.bash_profile" "$HOME/.bashrc" "$HOME/.profile"; do
+        if [ -f "$profile" ]; then
+            # 提取原始右侧内容 (可能包含引号、注释或分号)
+            local raw
+            raw=$(sed -nE "s/^[[:space:]]*export[[:space:]]+${var_name}[[:space:]]*=[[:space:]]*(.*)$/\1/p" "$profile" 2>/dev/null)
+            if [ -n "$raw" ]; then
+                # 去掉行尾注释和末尾分号
+                raw=$(echo "$raw" | sed -E 's/[[:space:]]*#.*$//' | sed -E 's/[[:space:]]*;[[:space:]]*$//')
+                # 去掉首尾空白
+                raw=$(echo "$raw" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')
+
+                # 如果首尾是配对的单/双引号，则去掉
+                if [ "${#raw}" -ge 2 ]; then
+                    local first_char="${raw:0:1}"
+                    local last_char="${raw: -1}"
+                    if { [ "$first_char" = '"' ] && [ "$last_char" = '"' ]; } || { [ "$first_char" = "'" ] && [ "$last_char" = "'" ]; }; then
+                        raw="${raw:1:${#raw}-2}"
+                    fi
+                fi
+
+                # 将处理结果作为提取值
+                value="$raw"
+                break
+            fi
+        fi
+    done
+
     echo "$value"
 }
 
@@ -190,13 +202,13 @@ show_success_notification() {
     notif_type=$(get_success_notification_type)
     case "$notif_type" in
         "dialog")
-            show_folder_dialog "$title" "$message" "$folder_path"
+            show_folder_dialog "✅ $title" "$message" "$folder_path"
             ;;
         "notification")
             if [ -n "$folder_path" ] && [ -d "$folder_path" ] && command -v terminal-notifier >/dev/null 2>&1; then
                 terminal-notifier -title "$title" -message "$message" -sound "Glass" -execute "open '$folder_path'" -timeout 10 2>/dev/null || true
             else
-                send_notification "$title" "$message" "Glass"
+                send_notification "✅ $title" "$message" "Glass"
             fi
             ;;
         "none"|"")
@@ -437,6 +449,7 @@ process_files() {
                 echo "$dir|$arg" >> "$temp_file_list"
             else
                 log_info "跳过不支持格式: $arg" "Skipped unsupported format: $arg"
+                # send_notification "TinyImage" "不支持的文件格式: $arg" "Glass"
                 echo "skip" >> "$temp_results"
             fi
         else
@@ -519,14 +532,8 @@ process_files() {
         fi
         show_success_notification "$title" "$message" "$last_output_dir"
     fi
-    
-    # 显示错误通知（始终使用系统通知）
-    if [ "$fail_count" -gt 0 ] && [ "$success_count" -eq 0 ]; then
-        local title=$(msg "TinyImage 压缩失败" "TinyImage Compression Failed")
-        local message=$(msg "压缩失败，请检查文件和网络连接" "Compression failed, please check files and network")
-        send_notification "$title" "$message" "Basso"
-    fi
-    
+
+
     if [ "$fail_count" -eq 0 ]; then
         return 0
     else
@@ -547,6 +554,7 @@ main() {
     # 获取和验证 API Key
     local api_key
     api_key=$(get_api_key)
+    log_info api_key="API Key: $api_key"  # 调试输出API Key
     
     log_info "验证 API Key..." "Validating API Key..."
     if ! validate_api_key "$api_key"; then
