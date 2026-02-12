@@ -259,7 +259,7 @@ check_dependencies() {
     fi
 }
 
-# ==== API Key 验证 ====
+# ==== 获取 API Key ====
 get_api_key() {
     local api_key="$TINIFY_IMAGE_API_KEY_HARDCODED"
     if [ -z "$api_key" ]; then
@@ -290,6 +290,9 @@ validate_api_key() {
     local http_code="${response: -3}"
     
     if [ "$http_code" != "400" ]; then
+        local title
+        local message
+        title=$(msg "TinyImage - API 验证失败" "TinyImage - API validation failed")
         if [ "$http_code" = "401" ]; then
             log_error "错误: API Key 无效" "Error: Invalid API Key"
         else
@@ -374,6 +377,8 @@ compress_image() {
                 error_message=$(echo "$json_response" | jq -r '.error // .message // "Unknown error"')
             fi
         fi
+        local title
+        local message
         log_error "压缩失败 $input_file: $error_message" "Compression failed $input_file: $error_message"
         # 清理临时文件
         rm -f "$temp_response" "$temp_headers"
@@ -382,27 +387,30 @@ compress_image() {
     
     # 检查响应是否为空
     if [ ! -s "$temp_response" ]; then
+        local title
+        local message
         log_error "API 返回空响应: $input_file" "API returned empty response: $input_file"
         # 清理临时文件
         rm -f "$temp_response" "$temp_headers"
         return 1
     fi
     
-    # 获取下载URL和压缩统计
+    # 获取下载URL
     local download_url
-    local compression_count
-    
     if ! download_url=$(echo "$json_response" | jq -r '.output.url'); then
+        local title
+        local message
         log_error "解析响应失败: $input_file" "Failed to parse response: $input_file"
         # 清理临时文件
         rm -f "$temp_response" "$temp_headers"
         return 1
     fi
-    
-    compression_count=$(curl -s -I -u "api:$api_key" "https://api.tinify.com/shrink" | grep -i "compression-count" | cut -d: -f2 | tr -d ' \r')
+
     
     # 下载压缩后的图片
     if ! curl -s -u "api:$api_key" "$download_url" -o "$output_file"; then
+        local title
+        local message
         log_error "下载失败: $output_file" "Download failed: $output_file"
         # 清理临时文件
         rm -f "$temp_response" "$temp_headers"
@@ -411,12 +419,23 @@ compress_image() {
     
     # 清理临时文件
     rm -f "$temp_response" "$temp_headers"
-    
-    # 显示结果
+
     log_info "✅ 压缩完成: $output_file" "✅ Compressed: $output_file"
-    if [ -n "$compression_count" ]; then
-        log_info "📊 剩余Tinify额度: $compression_count/500" "📊 Remaining Tinify quota: $compression_count/500"
-    fi
+
+    # 已使用的压缩次数
+    # local compression_count
+    # compression_count=$(curl -s -I \
+    # -u "api:$api_key" \
+    # -X POST https://api.tinify.com/shrink \
+    # | grep -i "Compression-Count" \
+    # | awk '{print $2}' \
+    # | tr -d '\r')
+ 
+ 
+
+    # if [ -n "$compression_count" ]; then
+    #     log_info "📊 已使用 $compression_count 次压缩" "📊 "Compression count used: $compression_count""
+    # fi
     
     return 0
 }
@@ -461,10 +480,11 @@ process_files() {
                 echo "$dir|$arg" >> "$temp_file_list"
             else
                 log_info "跳过不支持格式: $arg" "Skipped unsupported format: $arg"
-                # send_notification "TinyImage" "不支持的文件格式: $arg" "Glass"
                 echo "skip" >> "$temp_results"
             fi
         else
+            local title
+            local message
             log_error "文件或目录不存在: $arg" "File or directory not found: $arg"
             echo "fail" >> "$temp_results"
         fi
@@ -584,12 +604,7 @@ main() {
 
     # 先检查是否有受支持的图片可以处理
     if ! has_supported_images "$@"; then
-        local title
-        local message
-        title=$(msg "TinyImage - 不支持的图片格式" "TinyImage - Unsupported image formats")
-        message=$(msg "提供的图片格式均不受支持。支持的格式: \n$(format_supported_formats)" "None of the provided images are supported. Supported formats: \n$(format_supported_formats)")
-        send_notification "$title" "$message" "Glass"
-        log_error "没有可处理的图片文件" "No supported image files to process"
+        log_error "请提供以下格式的图片: \n$(format_supported_formats)" "Please provide images in the following formats: \n$(format_supported_formats)"
         exit 1
     fi
 
