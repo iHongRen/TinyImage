@@ -16,6 +16,26 @@ TINIFY_SUCCESS_NOTIFICATION_TYPE_HARDCODED=""  # 可在此处直接设置提示�
 DEBUG_MODE="${DEBUG:-0}"     # 设置为1启用调试模式
 # =====================================================================
 
+# 支持的图片格式
+SUPPORTED_FORMATS=("jpg" "jpeg" "png" "webp" "avif")
+
+# 返回格式化的支持格式列表（根据语言选择分隔符）
+format_supported_formats() {
+    local sep=", "
+    if [ "${LANG_CODE:-en}" = "zh" ]; then
+        sep="、"
+    fi
+    local out=""
+    for ext in "${SUPPORTED_FORMATS[@]}"; do
+        if [ -z "$out" ]; then
+            out="$ext"
+        else
+            out="$out$sep$ext"
+        fi
+    done
+    echo "$out"
+}
+
 # ==== 通用环境变量读取函数 ====
 get_env_from_profiles() {
     local var_name="$1"
@@ -66,8 +86,7 @@ get_success_notification_type() {
     echo "$notif_type"
 }
 
-# 支持的图片格式
-SUPPORTED_FORMATS=("jpg" "jpeg" "png" "webp" "avif")
+
 
 # ==== 语言检测 ====
 detect_language() {
@@ -205,14 +224,7 @@ show_success_notification() {
             show_folder_dialog "✅ $title" "$message" "$folder_path"
             ;;
         "notification")
-            if [ -n "$folder_path" ] && [ -d "$folder_path" ] && command -v terminal-notifier >/dev/null 2>&1; then
-                terminal-notifier -title "$title" -message "$message" -sound "Glass" -execute "open '$folder_path'" -timeout 10 2>/dev/null || true
-            else
-                send_notification "✅ $title" "$message" "Glass"
-            fi
-            ;;
-        "none"|"")
-            # 不显示任何通知
+            send_notification "✅ $title" "$message" "Glass"
             ;;
         *)
             # 默认不提示
@@ -222,7 +234,7 @@ show_success_notification() {
 
 show_usage() {
     log_info "用法: $0 <图片文件或目录> [图片文件或目录...]" "Usage: $0 <image_file_or_directory> [image_file_or_directory...]"
-    log_info "支持格式: ${SUPPORTED_FORMATS[*]}" "Supported formats: ${SUPPORTED_FORMATS[*]}"
+    log_info "支持格式: $(format_supported_formats)" "Supported formats: $(format_supported_formats)"
     log_info "" ""
     log_info "环境变量配置:" "Environment Variables:"
     log_info "  TINIFY_IMAGE_API_KEY - Tinify API 密钥" "  TINIFY_IMAGE_API_KEY - Tinify API key"
@@ -457,7 +469,8 @@ process_files() {
             echo "fail" >> "$temp_results"
         fi
     done
-    
+
+  
     # 获取所有唯一的目录
     if [ -f "$temp_file_list" ] && [ -s "$temp_file_list" ]; then
         cut -d'|' -f1 "$temp_file_list" | sort -u > "$temp_dir_list"
@@ -541,27 +554,48 @@ process_files() {
     fi
 }
 
+# 检查传入的参数中是否存在受支持的图片（文件或目录中包含受支持图片）
+has_supported_images() {
+    for arg in "$@"; do
+        if [ -d "$arg" ]; then
+            for ext in "${SUPPORTED_FORMATS[@]}"; do
+                if find "$arg" -maxdepth 1 -type f -iname "*.${ext}" | grep -q .; then
+                    return 0
+                fi
+            done
+        elif [ -f "$arg" ]; then
+            if is_supported_format "$arg"; then
+                return 0
+            fi
+        fi
+    done
+    return 1
+}
+
 # ==== 主函数 ====
 main() {
     if [ "$#" -eq 0 ]; then
         show_usage
         exit 1
     fi
-    
+
     # 检查依赖
     check_dependencies
-    
-    # 获取和验证 API Key
-    local api_key
-    api_key=$(get_api_key)
-    log_info api_key="API Key: $api_key"  # 调试输出API Key
-    
-    log_info "验证 API Key..." "Validating API Key..."
-    if ! validate_api_key "$api_key"; then
+
+    # 先检查是否有受支持的图片可以处理
+    if ! has_supported_images "$@"; then
+        local title
+        local message
+        title=$(msg "TinyImage - 不支持的图片格式" "TinyImage - Unsupported image formats")
+        message=$(msg "提供的图片格式均不受支持。支持的格式: \n$(format_supported_formats)" "None of the provided images are supported. Supported formats: \n$(format_supported_formats)")
+        send_notification "$title" "$message" "Glass"
+        log_error "没有可处理的图片文件" "No supported image files to process"
         exit 1
     fi
-    log_info "✅ API Key 验证成功" "✅ API Key validated successfully"
-    
+
+    # 获取 API Key
+    local api_key=$(get_api_key)
+
     # 处理文件
     process_files "$api_key" "$@"
     exit $?
