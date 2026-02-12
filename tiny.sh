@@ -1,18 +1,17 @@
 #!/bin/bash
 
-# TinyImage - 图片压缩工具 (Shell版本)
-# 使用 Tinify API 压缩图片，无需 Python 环境
+# TinyImage - 图片压缩工具，使用Tinify API进行高效压缩，支持批量处理
 
 # ==== 配置项 ====
 # https://tinify.com/dashboard/api 申请免费API Key，每月可免费压缩500张图片
-TINIFY_API_KEY_HARDCODED=""  # 可在此处直接设置API Key
+XY_TINIFY_API_KEY_HARDCODED=""  # 可在此处直接设置API Key
 DEBUG_MODE="${DEBUG:-0}"     # 设置为1启用调试模式
 
 # 成功后的提示方式配置
 # "dialog" - 弹窗提示（默认）
 # "notification" - 系统通知
 # "none" - 不显示提示
-SUCCESS_NOTIFICATION_TYPE="${SUCCESS_NOTIFICATION_TYPE:-dialog}"
+SUCCESS_NOTIFICATION_TYPE="${SUCCESS_NOTIFICATION_TYPE:-notification}"
 
 # 支持的图片格式
 SUPPORTED_FORMATS=("jpg" "jpeg" "png" "webp" "avif")
@@ -174,7 +173,7 @@ show_usage() {
     log_info "支持格式: ${SUPPORTED_FORMATS[*]}" "Supported formats: ${SUPPORTED_FORMATS[*]}"
     log_info "" ""
     log_info "环境变量配置:" "Environment Variables:"
-    log_info "  TINIFY_API_KEY - Tinify API 密钥" "  TINIFY_API_KEY - Tinify API key"
+    log_info "  XY_TINIFY_API_KEY - Tinify API 密钥" "  XY_TINIFY_API_KEY - Tinify API key"
     log_info "  DEBUG - 设置为1启用调试模式" "  DEBUG - Set to 1 to enable debug mode"
     log_info "  SUCCESS_NOTIFICATION_TYPE - 成功后的提示方式:" "  SUCCESS_NOTIFICATION_TYPE - Success notification type:"
     log_info "    dialog - 弹窗提示（默认）" "    dialog - Dialog prompt (default)"
@@ -198,38 +197,38 @@ check_dependencies() {
 
 # ==== API Key 验证 ====
 get_api_key() {
-    local api_key="$TINIFY_API_KEY_HARDCODED"
+    local api_key="$XY_TINIFY_API_KEY_HARDCODED"
     if [ -z "$api_key" ]; then
-        api_key="$TINIFY_API_KEY"
+        api_key="$XY_TINIFY_API_KEY"
     fi
     
     # 如果环境变量为空，尝试从常见的环境变量文件中读取
     if [ -z "$api_key" ]; then
         # 尝试从 ~/.zshrc 读取
         if [ -f "$HOME/.zshrc" ]; then
-            api_key=$(grep "^export TINIFY_API_KEY=" "$HOME/.zshrc" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+            api_key=$(grep "^export XY_TINIFY_API_KEY=" "$HOME/.zshrc" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
         fi
         
         # 如果还是为空，尝试从 ~/.bash_profile 读取
         if [ -z "$api_key" ] && [ -f "$HOME/.bash_profile" ]; then
-            api_key=$(grep "^export TINIFY_API_KEY=" "$HOME/.bash_profile" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+            api_key=$(grep "^export XY_TINIFY_API_KEY=" "$HOME/.bash_profile" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
         fi
         
         # 尝试从 ~/.bashrc 读取
         if [ -z "$api_key" ] && [ -f "$HOME/.bashrc" ]; then
-            api_key=$(grep "^export TINIFY_API_KEY=" "$HOME/.bashrc" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+            api_key=$(grep "^export XY_TINIFY_API_KEY=" "$HOME/.bashrc" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
         fi
         
         # 尝试从 ~/.profile 读取
         if [ -z "$api_key" ] && [ -f "$HOME/.profile" ]; then
-            api_key=$(grep "^export TINIFY_API_KEY=" "$HOME/.profile" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+            api_key=$(grep "^export XY_TINIFY_API_KEY=" "$HOME/.profile" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
         fi
     fi
     
     if [ -z "$api_key" ]; then
-        log_error "错误: 未设置 TINIFY_API_KEY" "Error: TINIFY_API_KEY not set"
-        log_info "请设置环境变量: export TINIFY_API_KEY=\"your_api_key\"" "Please set environment variable: export TINIFY_API_KEY=\"your_api_key\""
-        log_info "或在脚本中设置 TINIFY_API_KEY_HARDCODED" "Or set TINIFY_API_KEY_HARDCODED in the script"
+        log_error "错误: 未设置 XY_TINIFY_API_KEY" "Error: XY_TINIFY_API_KEY not set"
+        log_info "请设置环境变量: export XY_TINIFY_API_KEY=\"your_api_key\"" "Please set environment variable: export XY_TINIFY_API_KEY=\"your_api_key\""
+        log_info "或在脚本中设置 XY_TINIFY_API_KEY_HARDCODED" "Or set XY_TINIFY_API_KEY_HARDCODED in the script"
         log_info "或将环境变量添加到 ~/.zshrc, ~/.bash_profile, ~/.bashrc 或 ~/.profile 文件中" "Or add the environment variable to ~/.zshrc, ~/.bash_profile, ~/.bashrc or ~/.profile"
         exit 1
     fi
