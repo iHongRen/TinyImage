@@ -498,31 +498,55 @@ process_files() {
         # 处理每个目录
         while read -r dir; do
             if [ -n "$dir" ]; then
-                # 创建输出目录
+                # 计算输出目录名称（选择一个不存在的名称）
                 local tinified_dir="$dir/tinified"
                 local counter=1
                 while [ -d "$tinified_dir" ]; do
                     tinified_dir="$dir/tinified($counter)"
                     counter=$((counter + 1))
                 done
-                
-                mkdir -p "$tinified_dir"
-                last_output_dir="$tinified_dir"  # 记录输出目录
-                
-                # 处理该目录中的文件
-                grep "^$dir|" "$temp_file_list" | while IFS='|' read -r file_dir file_path; do
+
+                # 标记为我们将创建的新目录（尚未创建）
+                local created_dir=0
+                local dir_success_count=0
+
+                # 先创建目录，如果没有任何成功则在稍后删除
+                if mkdir -p "$tinified_dir"; then
+                    created_dir=1
+                fi
+
+                # 处理该目录中的文件（使用process substitution以便在同一shell中更新变量）
+                while IFS='|' read -r file_dir file_path; do
                     if [ -n "$file_path" ]; then
                         local filename
                         filename=$(basename "$file_path")
                         local output_file="$tinified_dir/$filename"
-                        
+
                         if compress_image "$file_path" "$output_file" "$api_key"; then
                             echo "success" >> "$temp_results"
+                            dir_success_count=$((dir_success_count + 1))
+                            # 记录最后一个非空的输出目录
+                            last_output_dir="$tinified_dir"
                         else
                             echo "fail" >> "$temp_results"
                         fi
                     fi
-                done
+                done < <(grep "^$dir|" "$temp_file_list")
+
+                # 如果我们创建了该目录但没有任何成功，则删除该空目录
+                if [ "$created_dir" -eq 1 ] && [ "$dir_success_count" -eq 0 ]; then
+                    # 尝试使用 rmdir 删除空目录；如果非空则强制删除以满足用户要求
+                    if rmdir "$tinified_dir" 2>/dev/null; then
+                        log_info "已移除空目录: $tinified_dir" "Removed empty directory: $tinified_dir"
+                    else
+                        rm -rf "$tinified_dir" 2>/dev/null || true
+                        log_info "已移除空目录（强制）: $tinified_dir" "Removed empty directory (forced): $tinified_dir"
+                    fi
+                    # 如果刚刚删除的是 last_output_dir，则清空该变量
+                    if [ "$last_output_dir" = "$tinified_dir" ]; then
+                        last_output_dir=""
+                    fi
+                fi
             fi
         done < "$temp_dir_list"
     fi
