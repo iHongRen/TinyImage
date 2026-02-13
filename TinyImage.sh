@@ -496,6 +496,31 @@ process_files() {
 
   
     # 获取所有唯一的目录
+    # 去重 temp_file_list（按文件路径），避免同一文件被多次列出
+    if [ -f "$temp_file_list" ] && [ -s "$temp_file_list" ]; then
+        if [ "$DEBUG_MODE" = "1" ]; then
+            log_debug "原始待处理列表:"
+            sed -n '1,200p' "$temp_file_list" 2>/dev/null || true
+        fi
+
+        local temp_file_list_unique=$(mktemp)
+        cut -d'|' -f2 "$temp_file_list" | sort -u | while read -r unique_file; do
+            if [ -n "$unique_file" ]; then
+                local dir
+                dir=$(dirname "$unique_file")
+                echo "$dir|$unique_file" >> "$temp_file_list_unique"
+            fi
+        done
+
+        # 用去重后的列表替换原列表
+        mv "$temp_file_list_unique" "$temp_file_list"
+
+        if [ "$DEBUG_MODE" = "1" ]; then
+            log_debug "去重后待处理列表:"
+            sed -n '1,200p' "$temp_file_list" 2>/dev/null || true
+        fi 
+    fi
+    
     if [ -f "$temp_file_list" ] && [ -s "$temp_file_list" ]; then
         cut -d'|' -f1 "$temp_file_list" | sort -u > "$temp_dir_list"
         
