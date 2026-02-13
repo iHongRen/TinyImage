@@ -1,6 +1,6 @@
 # TinyImage
 
-A macOS batch image compression tool based on the Tinify API, designed for easy use directly from the Finder toolbar.
+A macOS image compression tool built on the Tinify API that enables quick and easy image compression directly from the Finder toolbar or right-click context menu.
 
 [中文 README](./README.md)
 
