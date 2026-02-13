@@ -1,6 +1,6 @@
-# TinyImage
+# [TinyImage](https://github.com/iHongRen/TinyImage)
 
-一个基于 Tinify API 的 macOS 图片压缩工具，在Finder工具栏或者右键菜单上直接操作图片压缩，简单快捷。
+一个基于 Tinify API 的 macOS 图片压缩工具，直接在Finder工具栏或者右键菜单上操作图片压缩，简单快捷。
 
 [English README](./README_EN.md)
 
