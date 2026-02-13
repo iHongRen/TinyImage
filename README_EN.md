@@ -1,4 +1,4 @@
-# TinyImage
+# [TinyImage](https://github.com/iHongRen/TinyImage)
 
 A macOS image compression tool built on the Tinify API that enables quick and easy image compression directly from the Finder toolbar or right-click context menu.
 
@@ -49,7 +49,7 @@ If you're not familiar with editing environment variables, you can use [ConfigEd
 1. In Finder, select images or folders to compress
 2. Click the TinyImage icon in the toolbar
 3. On first use, grant permissions if prompted
-   
+  
    > If you accidentally deny, go to `Privacy & Security` > `Automation` > `TinyImage.app` and allow Finder access
 4. Compression involves upload > compress > download, so please wait patiently
 
@@ -99,6 +99,6 @@ Search for 'Automator' in Launchpad, open Automator, create a new Quick Action, 
 
 ## Support
 
-If TinyImage improves your workflow, please star the project and stay tuned!
+If TinyImage improves your workflow, please [star](https://github.com/iHongRen/TinyImage) the project and stay tuned!
 
 Buy me a coffee? [💖Sponsor the developer](https://ihongren.github.io/donate.html)

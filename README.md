@@ -30,7 +30,7 @@
 
 ## 配置
 
-1. 前往 [Tinify Dashboard](https://tinify.com/developers) 申请免费 API Key（每月可免费压缩 500 张图片，且不受5M大小限制）
+1. 前往 [Tinify Dashboard](https://tinify.com/developers) 申请免费 API Key（每月可免费压缩 500 张图片，且不受5M大小）
 
 2. 在环境变量配置文件（`~/.zshrc`、`~/.bash_profile` 或 `~/.bashrc` ）中添加 API Key 和提示方式
 
@@ -120,7 +120,7 @@ export TINIFY_SUCCESS_NOTIFICATION_TYPE="dialog"
 
 ## 支持
 
-如果本工具帮助您提升了一点点工作效率，欢迎 Star 加继续关注。
+如果本工具帮助您提升了一点点工作效率，欢迎 [Star](https://github.com/iHongRen/TinyImage) 加继续关注。
 
 赠送一杯咖啡吗？ [💖赞助开发者](https://ihongren.github.io/donate.html)
 
