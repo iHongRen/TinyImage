@@ -463,6 +463,10 @@ process_files() {
     
     # 收集所有需要处理的文件
     for arg in "$@"; do
+        # 跳过空参数和 .app 应用自身
+        if [ -z "$arg" ] || [[ "$arg" == *.app ]]; then
+            continue
+        fi
         if [ -d "$arg" ]; then
             # 处理目录
             find_images_in_directory "$arg" | while read -r file; do
