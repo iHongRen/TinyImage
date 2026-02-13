@@ -9,6 +9,7 @@
 - 便捷操作：集成到 Finder 工具栏，一键压缩
 - 批量处理：支持多个图片或整个目录的批量压缩
 - 灵活提示：支持弹窗、通知或静默三种提示方式
+- 右键菜单：借助`自动操作`实现右键TinyImage菜单项
 - 依赖Tinify支持的图片格式：png、jpeg、jpg、webp、avif
 
 
@@ -98,6 +99,23 @@ export TINIFY_SUCCESS_NOTIFICATION_TYPE="dialog"
     ├── image1.jpg  (压缩后)
     └── image2.png  (压缩后)
 ```
+
+
+
+## 右键菜单
+
+借助`自动操作`，为选中的文件，加上右键快速操作TinyImage菜单项.
+
+![](./screenshots/quick_contextmenu.png)
+
+
+
+在macOS App启动器中搜索 '自动操作'，打开`自动操作`应用，新建选择`快速操作`，按照下面的操作流程完后，保存命名为TinyImage。这样右键菜单中就会出现 `TinyImage` 选项了
+
+![](./screenshots/auto_quick.png)
+
+![](./screenshots/auto_guide.png)
+
 
 
 ## 支持
