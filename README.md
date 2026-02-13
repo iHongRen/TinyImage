@@ -16,7 +16,7 @@
 
 ## 安装步骤
 
-1. 下载 [TinyImage.dmg](./res/TinyImage.app) ，双击后将 `TinyImage.app` 拖放到 `/Applications`（应用程序）文件夹中
+1. 下载 [TinyImage.dmg](https://github.com/iHongRen/TinyImage/releases/download/1.0/TinyImage.dmg) ，双击后将 `TinyImage.app` 拖放到 `/Applications`（应用程序）文件夹中
 2. 去除隔离属性（重要）：打开终端，执行以下命令
    ```bash
    xattr -d com.apple.quarantine /Applications/TinyImage.app
@@ -110,7 +110,7 @@ export TINIFY_SUCCESS_NOTIFICATION_TYPE="dialog"
 
 
 
-在macOS App启动器中搜索 '自动操作'，打开`自动操作`应用，新建选择`快速操作`，按照下面的操作流程完后，保存命名为TinyImage。这样右键菜单中就会出现 `TinyImage` 选项了
+在macOS App启动器中搜索 '自动操作'，打开`自动操作`应用，新建选择`快速操作`，按照下面的流程操作完成后，保存命名为TinyImage。这样右键菜单中就会出现 `TinyImage` 菜单项了
 
 ![](./screenshots/auto_quick.png)
 
@@ -120,7 +120,7 @@ export TINIFY_SUCCESS_NOTIFICATION_TYPE="dialog"
 
 ## 支持
 
-如果本工具帮助您提升了一点点工作效率，您可以给个 Star 加继续关注 
+如果本工具帮助您提升了一点点工作效率，欢迎 Star 加继续关注。
 
- [💖赞助开发者](https://ihongren.github.io/donate.html)
+赠送一杯咖啡吗？ [💖赞助开发者](https://ihongren.github.io/donate.html)
 
