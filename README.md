@@ -1,6 +1,6 @@
 # TinyImage
 
-一个基于 Tinify API 的 macOS 图片压缩工具，在Finder工具栏或者右键菜单上操作图片压缩，简单快捷。
+一个基于 Tinify API 的 macOS 图片压缩工具，在Finder工具栏或者右键菜单上直接操作图片压缩，简单快捷。
 
 [English README](./README_EN.md)
 
@@ -30,7 +30,7 @@
 
 ## 配置
 
-1. 前往 [Tinify Dashboard](https://tinify.com/developers) 申请免费 API Key（每月可免费压缩 500 张图片）
+1. 前往 [Tinify Dashboard](https://tinify.com/developers) 申请免费 API Key（每月可免费压缩 500 张图片，且不受5M大小限制）
 
 2. 在环境变量配置文件（`~/.zshrc`、`~/.bash_profile` 或 `~/.bashrc` ）中添加 API Key 和提示方式
 

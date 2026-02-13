@@ -26,7 +26,7 @@ A macOS image compression tool built on the Tinify API that enables quick and ea
 
 ## Configuration
 
-1. Go to [Tinify Dashboard](https://tinify.com/developers) and apply for a free API Key (500 images/month).
+1. Go to [Tinify Dashboard](https://tinify.com/developers) and apply for a free API Key (500 images/month, no 5MB size limit).
 2. Add your API Key and notification type to your shell config file (`~/.zshrc`, `~/.bash_profile`, or `~/.bashrc`):
    ```bash
    export TINIFY_IMAGE_API_KEY="your_api_key_here"
