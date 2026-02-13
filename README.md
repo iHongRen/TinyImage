@@ -29,7 +29,7 @@
 
 ## 配置
 
-1. 前往 [Tinify Dashboard](https://tinify.com/dashboard/api) 申请免费 API Key（每月可免费压缩 500 张图片）
+1. 前往 [Tinify Dashboard](https://tinify.com/developers) 申请免费 API Key（每月可免费压缩 500 张图片）
 
 2. 在环境变量配置文件（`~/.zshrc`、`~/.bash_profile` 或 `~/.bashrc` ）中添加 API Key 和提示方式
 

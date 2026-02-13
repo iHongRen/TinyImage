@@ -3,7 +3,7 @@
 # TinyImage - 图片压缩工具，使用Tinify API进行高效压缩，支持批量处理
 
 # ==== 配置项 ==========================================================
-# 前往 https://tinify.com/dashboard/api 申请免费API Key，每月可免费压缩500张图片
+# 前往 https://tinify.com/developers 申请免费API Key，每月可免费压缩500张图片
 TINIFY_IMAGE_API_KEY_HARDCODED=""  # 可在此处直接设置API Key, 优先级高于环境变量
 
 # 成功后的提示方式配置
