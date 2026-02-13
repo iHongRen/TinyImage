@@ -7,9 +7,9 @@ A macOS image compression tool built on the Tinify API that enables quick and ea
 ## Features
 
 - Easy operation: integrated into Finder toolbar, one-click compression
+- Context menu: add TinyImage to Finder's right-click menu via Automator
 - Batch processing: compress multiple images or entire folders at once
 - Flexible notifications: choose between dialog, system notification, or silent mode
-- Context menu: add TinyImage to Finder's right-click menu via Automator
 - Supports Tinify formats: png, jpeg, jpg, webp, avif
 
 ## Installation

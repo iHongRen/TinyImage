@@ -7,9 +7,9 @@
 ## 功能特点
 
 - 便捷操作：集成到 Finder 工具栏，一键压缩
+- 右键菜单：借助`自动操作`实现右键TinyImage菜单项
 - 批量处理：支持多个图片或整个目录的批量压缩
 - 灵活提示：支持弹窗、通知或静默三种提示方式
-- 右键菜单：借助`自动操作`实现右键TinyImage菜单项
 - 依赖Tinify支持的图片格式：png、jpeg、jpg、webp、avif
 
 
@@ -30,7 +30,7 @@
 
 ## 配置
 
-1. 前往 [Tinify Dashboard](https://tinify.com/developers) 申请免费 API Key（每月可免费压缩 500 张图片，且不受5M大小）
+1. 前往 [Tinify Dashboard](https://tinify.com/developers) 申请免费 API Key（每月可免费压缩 500 张图片，且不受5M大小限制）
 
 2. 在环境变量配置文件（`~/.zshrc`、`~/.bash_profile` 或 `~/.bashrc` ）中添加 API Key 和提示方式
 
