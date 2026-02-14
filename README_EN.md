@@ -1,25 +1,25 @@
 # [TinyImage](https://github.com/iHongRen/TinyImage)
 
-macOS image compression tool - compress images in one click from Finder toolbar.
+macOS image compression tool based on Tinify API - compress images with one click from Finder toolbar.
 
 [中文 README](./README.md)
 
 ## Features
 
 - One-click compression from Finder toolbar
-- Batch process files and folders
+- Batch process images and folders
 - Supports PNG, JPG, JPEG, WebP, AVIF formats
 - Flexible notifications (dialog, system notification, or silent)
-- 500 free compressions per month, no 5MB size limit
+- 500 free compressions per month, no 5MB size limit, request additional API Keys if needed
 
 
 
 ## Quick Start
 
-### 1️⃣ Installation
+### Installation
 
 1. Download [TinyImage.dmg](https://github.com/iHongRen/TinyImage/releases/download/1.0/TinyImage.dmg)
-2. Double-click the DMG and drag `TinyImage.app` to `/Applications` folder
+2. Double-click the DMG and drag `TinyImage.app` to the `/Applications` folder
 3. Open Terminal and run this command to remove quarantine restriction:
    ```bash
    xattr -d com.apple.quarantine /Applications/TinyImage.app
@@ -30,13 +30,13 @@ macOS image compression tool - compress images in one click from Finder toolbar.
 
 
 
-### 2️⃣ Get API Key
+### Get API Key
 
 Visit [Tinify Website](https://tinify.com/developers) to sign up and get your free API Key.
 
 
 
-### 3️⃣ Configure Environment Variables (One-time setup)
+### Configure Environment Variables
 
 Copy the command below, **replace `your_api_key_here` with your actual API Key**, then paste and run in Terminal:
 
@@ -63,7 +63,7 @@ If it displays your API Key, configuration is successful ✅
 
 
 
-### 4️⃣ Start Using
+### Start Using
 
 1. Select images or folders in Finder
 2. Click the TinyImage icon in the toolbar
@@ -137,17 +137,21 @@ Now you'll see TinyImage in your right-click context menu.
 
 ## FAQ
 
-**Q: I see "Operation Run Shell Script Error" when clicking TinyImage in Finder toolbar?**
-
-A: Open Automator, right-click TinyImage.app in Applications → Open With → Automator, then save directly.
-
 **Q: What if I accidentally denied the permission prompt?**
 
 A: Go to System Settings → Privacy & Security → Automation → Find TinyImage.app and check "Finder" permission.
 
+**Q: I see "Operation Run Shell Script Error" when clicking TinyImage in Finder toolbar?**
+
+A: Open Automator, right-click TinyImage.app in Applications → Open With → Automator, then save directly.
+
 **Q: How do I change my configured API Key?**
 
 A: Edit `~/.zshrc` or `~/.bash_profile` with a text editor, modify the API Key line, save, then run `source ~/.zshrc` or `source ~/.bash_profile` to reload.
+
+**Q: How can I conveniently manage various configuration files?**
+
+A: We recommend using [Configs](https://github.com/iHongRen/configEditor). Environment variables take effect automatically after editing and saving.
 
 
 
