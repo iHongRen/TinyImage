@@ -1,104 +1,158 @@
 # [TinyImage](https://github.com/iHongRen/TinyImage)
 
-A macOS image compression tool built on the Tinify API that enables quick and easy image compression directly from the Finder toolbar or right-click context menu.
+macOS image compression tool - compress images in one click from Finder toolbar.
 
 [中文 README](./README.md)
 
 ## Features
 
-- Easy operation: integrated into Finder toolbar, one-click compression
-- Context menu: add TinyImage to Finder's right-click menu via Automator
-- Batch processing: compress multiple images or entire folders at once
-- Flexible notifications: choose between dialog, system notification, or silent mode
-- Supports Tinify formats: png, jpeg, jpg, webp, avif
+- One-click compression from Finder toolbar
+- Batch process files and folders
+- Supports PNG, JPG, JPEG, WebP, AVIF formats
+- Flexible notifications (dialog, system notification, or silent)
+- 500 free compressions per month, no 5MB size limit
 
-## Installation
 
-1. Download [TinyImage.dmg](https://github.com/iHongRen/TinyImage/releases/download/1.0/TinyImage.dmg), double-click, and drag `TinyImage.app` into your `/Applications` folder.
-2. Remove quarantine attribute (required): open Terminal and run:
+
+## Quick Start
+
+### 1️⃣ Installation
+
+1. Download [TinyImage.dmg](https://github.com/iHongRen/TinyImage/releases/download/1.0/TinyImage.dmg)
+2. Double-click the DMG and drag `TinyImage.app` to `/Applications` folder
+3. Open Terminal and run this command to remove quarantine restriction:
    ```bash
    xattr -d com.apple.quarantine /Applications/TinyImage.app
    ```
-   > Because the app is unsigned, macOS may block it. This command removes the quarantine so the app can run.
-3. In Applications, hold `⌘ Command` and drag `TinyImage.app` to the Finder toolbar.
+4. Hold `⌘ Command` key and drag `TinyImage.app` to the Finder toolbar
 
 ![](./screenshots/install.gif)
 
-## Configuration
 
-1. Go to [Tinify Dashboard](https://tinify.com/developers) and apply for a free API Key (500 images/month, no 5MB size limit).
-2. Add your API Key and notification type to your shell config file (`~/.zshrc`, `~/.bash_profile`, or `~/.bashrc`):
-   ```bash
-   export TINIFY_IMAGE_API_KEY="your_api_key_here"
-   export TINIFY_SUCCESS_NOTIFICATION_TYPE="dialog"
-   # Options:
-   # - dialog: dialog prompt
-   # - notification: system notification
-   # - none: no notification
-   ```
-3. Run `source ~/.zshrc` (or the relevant file) in Terminal to apply changes.
 
-If you're not familiar with editing environment variables, you can use [ConfigEditor](https://github.com/iHongRen/configEditor) for a graphical interface.
+### 2️⃣ Get API Key
 
-![](./screenshots/config.png)
+Visit [Tinify Website](https://tinify.com/developers) to sign up and get your free API Key.
 
-## Usage
 
-### Finder Toolbar (Recommended)
 
-1. In Finder, select images or folders to compress
+### 3️⃣ Configure Environment Variables (One-time setup)
+
+Copy the command below, **replace `your_api_key_here` with your actual API Key**, then paste and run in Terminal:
+
+#### Recommended Method (Single command)
+
+If you use **zsh** (default):
+```bash
+echo 'export TINIFY_IMAGE_API_KEY="your_api_key_here"' >> ~/.zshrc && echo 'export TINIFY_SUCCESS_NOTIFICATION_TYPE="dialog"' >> ~/.zshrc && source ~/.zshrc
+```
+
+If you use **bash**:
+```bash
+echo 'export TINIFY_IMAGE_API_KEY="your_api_key_here"' >> ~/.bash_profile && echo 'export TINIFY_SUCCESS_NOTIFICATION_TYPE="dialog"' >> ~/.bash_profile && source ~/.bash_profile
+```
+
+#### Verify Configuration
+
+Run this command to verify:
+```bash
+echo $TINIFY_IMAGE_API_KEY
+```
+
+If it displays your API Key, configuration is successful ✅
+
+
+
+### 4️⃣ Start Using
+
+1. Select images or folders in Finder
 2. Click the TinyImage icon in the toolbar
-3. On first use, grant permissions if prompted
-  
-   > If you accidentally deny, go to `Privacy & Security` > `Automation` > `TinyImage.app` and allow Finder access
-4. Compression involves upload > compress > download, so please wait patiently
+3. Grant permission when prompted on first use
+4. Wait for completion (upload → compress → download)
+
+Compressed images are saved in a `tinified` folder.
 
 ![](./screenshots/tinyimage.gif)
 
-### Command Line
+
+
+## Notification Preferences
+
+Customize notification type by changing `TINIFY_SUCCESS_NOTIFICATION_TYPE`:
+
+| Value | Effect |
+|---|---|
+| `dialog` | Dialog prompt (**recommended**) |
+| `notification` | System notification |
+| `none` | Silent (no notification) |
+
+To change notification type:
+```bash
+# zsh users
+echo 'export TINIFY_SUCCESS_NOTIFICATION_TYPE="notification"' >> ~/.zshrc && source ~/.zshrc
+
+# bash users
+echo 'export TINIFY_SUCCESS_NOTIFICATION_TYPE="notification"' >> ~/.bash_profile && source ~/.bash_profile
+```
+
+
+
+## Command Line Usage (Optional)
 
 ```bash
-# Compress a single file
+# Compress single image
 ./TinyImage.sh image.jpg
 
-# Compress multiple files
+# Compress multiple images
 ./TinyImage.sh image1.jpg image2.png image3.webp
 
-# Compress a directory
+# Compress entire folder
 ./TinyImage.sh /path/to/images/
-
-# Mixed usage
-./TinyImage.sh image.jpg /path/to/images/
 ```
 
-## Output
 
-Compressed images are saved in a `tinified` subfolder in the original directory. If `tinified` already exists, new folders like `tinified(1)`, `tinified(2)` are created automatically.
 
-Example:
-```
-OriginalFolder/
-├── image1.jpg
-├── image2.png
-└── tinified/
-    ├── image1.jpg  (compressed)
-    └── image2.png  (compressed)
-```
+## Right-Click Context Menu (Optional)
 
-## Context Menu
+Want to add TinyImage to Finder's right-click menu?
 
-Use Automator to add TinyImage to Finder's right-click menu for quick access.
+1. Open "Automator" application
+2. New → Quick Action
+3. Add "Run Shell Script" to the workflow
+4. Paste this code:
+   ```bash
+   open -a "/Applications/TinyImage.app" "$@"
+   ```
+5. Save and name it `TinyImage`
+
+Now you'll see TinyImage in your right-click context menu.
 
 ![](./screenshots/quick_contextmenu.png)
-
-Search for 'Automator' in Launchpad, open Automator, create a new Quick Action, and follow the steps below. Name it TinyImage to add the menu item.
 
 ![](./screenshots/auto_quick.png)
 
 ![](./screenshots/auto_guide.png)
 
+
+
+## FAQ
+
+**Q: I see "Operation Run Shell Script Error" when clicking TinyImage in Finder toolbar?**
+
+A: Open Automator, right-click TinyImage.app in Applications → Open With → Automator, then save directly.
+
+**Q: What if I accidentally denied the permission prompt?**
+
+A: Go to System Settings → Privacy & Security → Automation → Find TinyImage.app and check "Finder" permission.
+
+**Q: How do I change my configured API Key?**
+
+A: Edit `~/.zshrc` or `~/.bash_profile` with a text editor, modify the API Key line, save, then run `source ~/.zshrc` or `source ~/.bash_profile` to reload.
+
+
+
 ## Support
 
-If TinyImage improves your workflow, please [star](https://github.com/iHongRen/TinyImage) the project and stay tuned!
+If you find this tool helpful, please [⭐ Star](https://github.com/iHongRen/TinyImage) the project!
 
-Buy me a coffee? [💖Sponsor the developer](https://ihongren.github.io/donate.html)
+[💖 Support the Developer](https://ihongren.github.io/donate.html)
