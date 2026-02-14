@@ -72,7 +72,7 @@ If it displays your API Key, configuration is successful ✅
 
 Compressed images are saved in a `tinified` folder.
 
-![](./screenshots/tinyimage.gif)
+![](./screenshots/tinyimage_en.gif)
 
 
 
@@ -127,7 +127,7 @@ Want to add TinyImage to Finder's right-click menu?
 
 Now you'll see TinyImage in your right-click context menu.
 
-![](./screenshots/quick_contextmenu.png)
+![](./screenshots/quick_contextmenu_en.png)
 
 ![](./screenshots/auto_quick.png)
 
