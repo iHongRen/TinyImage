@@ -114,6 +114,10 @@ export TINIFY_SUCCESS_NOTIFICATION_TYPE="dialog"
 
 ![](./screenshots/auto_quick.png)
 
+添加执行脚本
+```sh
+open -a "/Applications/TinyImage.app" "$@"
+```
 ![](./screenshots/auto_guide.png)
 
 
