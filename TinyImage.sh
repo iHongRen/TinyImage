@@ -657,7 +657,7 @@ main() {
 
     # 先检查是否有受支持的图片可以处理
     if ! has_supported_images "$@"; then
-        log_error "请提供以下格式的图片: \n$(format_supported_formats)" "Please provide images in the following formats: \n$(format_supported_formats)"
+        log_error "请提供以下格式的图片: $(format_supported_formats)" "Please provide images in the following formats: $(format_supported_formats)"
         exit 1
     fi
 
