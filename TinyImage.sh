@@ -135,6 +135,15 @@ msg() {
 }
 
 # ==== 工具函数 ====
+to_absolute_path() {
+    local path="$1"
+    if [[ "$path" = /* ]]; then
+        echo "$path"
+    else
+        echo "$(cd "$(dirname "$path")" 2>/dev/null && pwd)/$(basename "$path")"
+    fi
+}
+
 log_info() {
     echo "$(msg "$1" "$2")" >&1
 }
@@ -467,29 +476,42 @@ process_files() {
         if [ -z "$arg" ] || [[ "$arg" == *.app ]]; then
             continue
         fi
-        if [ -d "$arg" ]; then
+        
+        # 检查是否存在
+        if [ ! -e "$arg" ]; then
+            local title
+            local message
+            log_error "文件或目录不存在: $arg" "File or directory not found: $arg"
+            echo "fail" >> "$temp_results"
+            continue
+        fi
+        
+        # 转换为绝对路径
+        local abs_arg
+        abs_arg=$(to_absolute_path "$arg")
+        
+        if [ -d "$abs_arg" ]; then
             # 处理目录
-            find_images_in_directory "$arg" | while read -r file; do
+            find_images_in_directory "$abs_arg" | while read -r file; do
                 if [ -n "$file" ]; then
                     local dir
                     dir=$(dirname "$file")
                     echo "$dir|$file" >> "$temp_file_list"
                 fi
             done
-        elif [ -f "$arg" ]; then
+        elif [ -f "$abs_arg" ]; then
             # 处理单个文件
-            if is_supported_format "$arg"; then
+            if is_supported_format "$abs_arg"; then
                 local dir
-                dir=$(dirname "$arg")
-                echo "$dir|$arg" >> "$temp_file_list"
+                dir=$(dirname "$abs_arg")
+                echo "$dir|$abs_arg" >> "$temp_file_list"
             else
-                log_info "跳过不支持格式: $arg" "Skipped unsupported format: $arg"
+                log_info "跳过不支持格式: $abs_arg" "Skipped unsupported format: $abs_arg"
                 echo "skip" >> "$temp_results"
             fi
         else
-            local title
-            local message
-            log_error "文件或目录不存在: $arg" "File or directory not found: $arg"
+            # 这不应该发生，因为我们已经检查了存在性
+            log_error "未知文件类型: $abs_arg" "Unknown file type: $abs_arg"
             echo "fail" >> "$temp_results"
         fi
     done
@@ -630,14 +652,18 @@ process_files() {
 # 检查传入的参数中是否存在受支持的图片（文件或目录中包含受支持图片）
 has_supported_images() {
     for arg in "$@"; do
-        if [ -d "$arg" ]; then
+        # 转换为绝对路径
+        local abs_arg
+        abs_arg=$(to_absolute_path "$arg")
+        
+        if [ -d "$abs_arg" ]; then
             for ext in "${SUPPORTED_FORMATS[@]}"; do
-                if find "$arg" -maxdepth 1 -type f -iname "*.${ext}" | grep -q .; then
+                if find "$abs_arg" -maxdepth 1 -type f -iname "*.${ext}" | grep -q .; then
                     return 0
                 fi
             done
-        elif [ -f "$arg" ]; then
-            if is_supported_format "$arg"; then
+        elif [ -f "$abs_arg" ]; then
+            if is_supported_format "$abs_arg"; then
                 return 0
             fi
         fi
