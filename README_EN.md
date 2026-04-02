@@ -18,7 +18,7 @@ macOS image compression tool based on Tinify API - compress images with one clic
 
 ### Installation
 
-1. Download [TinyImage.dmg](https://github.com/iHongRen/TinyImage/releases/download/1.0/TinyImage.dmg)
+1. Download [TinyImage.dmg](https://github.com/iHongRen/TinyImage/releases)
 2. Double-click the DMG and drag `TinyImage.app` to the `/Applications` folder
 3. Open Terminal and run this command to remove quarantine restriction:
    ```bash

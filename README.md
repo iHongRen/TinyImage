@@ -20,7 +20,7 @@
 
 ### 安装
 
-1. 下载 [TinyImage.dmg](https://github.com/iHongRen/TinyImage/releases/download/1.0/TinyImage.dmg)
+1. 下载 [TinyImage.dmg](https://github.com/iHongRen/TinyImage/releases)
 2. 双击 DMG，将 `TinyImage.app` 拖到 `/Applications`（应用程序）文件夹
 3. 打开终端，执行以下命令去除隔离属性：
    ```bash
