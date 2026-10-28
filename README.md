@@ -20,6 +20,16 @@
 
 ### 安装
 
+在终端执行（推荐）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/iHongRen/TinyImage/main/install.sh | sh
+```
+
+脚本会把最新版本安装到 `/Applications`，并在 `~/.config/tinyimage/config` 生成一份默认配置。若提示没有写入权限，用 `sudo sh` 重新执行即可。
+
+也可以手动安装：
+
 1. 下载 [TinyImage.dmg](https://github.com/iHongRen/TinyImage/releases)
 2. 双击 DMG，将 `TinyImage.app` 拖到 `/Applications`（应用程序）文件夹
 3. 打开终端，执行以下命令去除隔离属性：
@@ -171,6 +181,19 @@ A: 用编辑器打开 `~/.zshrc` 或 `~/.bash_profile`，找到相应行修改�
 
 **Q: 如何方便快捷的管理各种配置文件**
 A: 推荐使用 [Configs](https://github.com/iHongRen/configEditor)，编辑保存后，环境变量自动生效
+
+## 构建与发布（开发者）
+
+需要 macOS（App 由系统自带的 Automator Stub 组装）：
+
+```bash
+./build.sh 1.3.0     # 生成 dist/TinyImage.app
+./release.sh 1.3.0   # 构建并上传 dist/TinyImage.dmg 与 dist/TinyImage.zip 到 GitHub Release
+```
+
+`release.sh` 依赖 [GitHub CLI](https://cli.github.com/)，要求当前分支已推送且工作区干净。
+
+
 
 ## 支持
 

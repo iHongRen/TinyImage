@@ -18,6 +18,16 @@ macOS image compression tool based on Tinify API - compress images with one clic
 
 ### Installation
 
+Run this in Terminal (recommended):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/iHongRen/TinyImage/main/install.sh | sh
+```
+
+The script installs the latest version to `/Applications` and creates a default config at `~/.config/tinyimage/config`. If it reports a permission error, rerun with `sudo sh`.
+
+Or install manually:
+
 1. Download [TinyImage.dmg](https://github.com/iHongRen/TinyImage/releases)
 2. Double-click the DMG and drag `TinyImage.app` to the `/Applications` folder
 3. Open Terminal and run this command to remove quarantine restriction:
@@ -171,6 +181,19 @@ A: Edit `~/.zshrc` or `~/.bash_profile` with a text editor, modify the API Key l
 **Q: How can I conveniently manage various configuration files?**
 
 A: We recommend using [Configs](https://github.com/iHongRen/configEditor). Environment variables take effect automatically after editing and saving.
+
+
+
+## Build & Release (Developers)
+
+Requires macOS (the app is assembled from the system Automator Stub):
+
+```bash
+./build.sh 1.3.0     # build dist/TinyImage.app
+./release.sh 1.3.0   # build and upload dist/TinyImage.dmg and dist/TinyImage.zip to a GitHub Release
+```
+
+`release.sh` requires the [GitHub CLI](https://cli.github.com/), a clean working tree, and a branch that has been pushed.
 
 
 
