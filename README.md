@@ -9,7 +9,7 @@
 ## 功能
 
 - Finder 工具栏一键压缩
-- 支持图片和文件夹批量处理
+- 支持图片和文件夹批量处理（文件夹会递归处理子目录）
 - 支持 PNG、JPG、JPEG、WebP、AVIF 格式
 - 灵活提示（弹窗、通知或静默）
 - 每月免费压缩 500 张，无 5MB 限制，不够用可多申请几个API Key
@@ -34,7 +34,7 @@ curl -fsSL https://raw.githubusercontent.com/iHongRen/TinyImage/main/install.sh 
 2. 双击 DMG，将 `TinyImage.app` 拖到 `/Applications`（应用程序）文件夹
 3. 打开终端，执行以下命令去除隔离属性：
    ```bash
-   xattr -d com.apple.quarantine /Applications/TinyImage.app
+   xattr -dr com.apple.quarantine /Applications/TinyImage.app
    ```
 4. 按住 `⌘ Command` 键，用鼠标将 `TinyImage.app` 拖到 Finder 工具栏
 
@@ -101,7 +101,7 @@ cp config.example ~/.config/tinyimage/config
 3. 首次使用需要同意权限请求
 4. 等待完成（需要上传→压缩→下载）
 
-压缩后的图片保存在 `tinified` 文件夹中。
+压缩后的图片保存在源目录下的 `tinified` 文件夹中（子目录各自生成一个 `tinified`，已存在时自动改用 `tinified(1)`、`tinified(2)`……）。
 
 ![](./screenshots/tinyimage.gif)
 
@@ -177,7 +177,7 @@ A: 打开自动操作应用，在 Applications 中右键 TinyImage.app → 打�
 
 **Q: 如何修改已配置的 API Key？**
 
-A: 用编辑器打开 `~/.zshrc` 或 `~/.bash_profile`，找到相应行修改，保存后执行 `source ~/.zshrc` 或 `source ~/.bash_profile` 重新加载。
+A: 用编辑器打开 `~/.config/tinyimage/config`（或 `~/.zshrc` / `~/.bash_profile`），找到相应行修改并保存，下次运行即生效。
 
 **Q: 如何方便快捷的管理各种配置文件**
 A: 推荐使用 [Configs](https://github.com/iHongRen/configEditor)，编辑保存后，环境变量自动生效

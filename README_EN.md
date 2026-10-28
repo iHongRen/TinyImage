@@ -7,7 +7,7 @@ macOS image compression tool based on Tinify API - compress images with one clic
 ## Features
 
 - One-click compression from Finder toolbar
-- Batch process images and folders
+- Batch process images and folders (subfolders are processed recursively)
 - Supports PNG, JPG, JPEG, WebP, AVIF formats
 - Flexible notifications (dialog, system notification, or silent)
 - 500 free compressions per month, no 5MB size limit, request additional API Keys if needed
@@ -32,7 +32,7 @@ Or install manually:
 2. Double-click the DMG and drag `TinyImage.app` to the `/Applications` folder
 3. Open Terminal and run this command to remove quarantine restriction:
    ```bash
-   xattr -d com.apple.quarantine /Applications/TinyImage.app
+   xattr -dr com.apple.quarantine /Applications/TinyImage.app
    ```
 4. Hold `⌘ Command` key and drag `TinyImage.app` to the Finder toolbar
 
@@ -99,7 +99,7 @@ Priority: hardcoded in script > environment variables > config file > shell prof
 3. Grant permission when prompted on first use
 4. Wait for completion (upload → compress → download)
 
-Compressed images are saved in a `tinified` folder.
+Compressed images are saved in a `tinified` folder next to the source (each subfolder gets its own `tinified`; if one already exists, `tinified(1)`, `tinified(2)`, … is used).
 
 ![](./screenshots/tinyimage_en.gif)
 
@@ -176,7 +176,7 @@ A: Open Automator, right-click TinyImage.app in Applications → Open With → A
 
 **Q: How do I change my configured API Key?**
 
-A: Edit `~/.zshrc` or `~/.bash_profile` with a text editor, modify the API Key line, save, then run `source ~/.zshrc` or `source ~/.bash_profile` to reload.
+A: Edit `~/.config/tinyimage/config` (or `~/.zshrc` / `~/.bash_profile`) with a text editor, modify the API Key line, and save. Changes take effect on the next run.
 
 **Q: How can I conveniently manage various configuration files?**
 

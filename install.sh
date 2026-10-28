@@ -20,7 +20,7 @@ if [ "$(uname -s)" != "Darwin" ]; then
   exit 1
 fi
 
-for cmd in curl hdiutil ditto xattr mktemp; do
+for cmd in curl hdiutil ditto xattr codesign mktemp; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
     echo "缺少命令：$cmd" >&2
     exit 1
@@ -57,6 +57,12 @@ if [ ! -d "$MOUNT/$APP.app" ]; then
   exit 1
 fi
 
+# 签名校验只作为提示：早期版本是 ad-hoc 签名，资源稍有改动就校验不通过，
+# 不能因此拒绝安装，但要让用户知道安装包完整性存疑。
+if ! codesign --verify --deep --strict "$MOUNT/$APP.app" >/dev/null 2>&1; then
+  echo "警告：$APP.app 签名校验未通过，安装包可能已损坏或被改动。" >&2
+fi
+
 echo "安装到 $INSTALL_DIR"
 # 先复制到临时名再替换，避免中途失败留下残缺的 App
 NEW="$INSTALL_DIR/.${APP}.app.new"
@@ -71,28 +77,24 @@ xattr -dr com.apple.quarantine "$INSTALL_DIR/$APP.app"
 # 生成默认配置，已有配置不覆盖
 CONFIG_DIR="$USER_HOME/.config/tinyimage"
 CONFIG_FILE="$CONFIG_DIR/config"
+CONFIG_URL="https://raw.githubusercontent.com/${REPO}/main/config.example"
 if [ -f "$CONFIG_FILE" ]; then
   echo "保留已有配置：$CONFIG_FILE"
 else
   mkdir -p "$CONFIG_DIR"
-  cat > "$CONFIG_FILE" <<'CONFIG'
-# TinyImage 配置
-# 环境变量 TINIFY_IMAGE_API_KEY / TINIFY_SUCCESS_NOTIFICATION_TYPE / DEBUG
-# 优先于本文件。
-
-# Tinify API Key，前往 https://tinify.com/developers 免费申请
-API_KEY=
-
-# 提示方式：dialog 弹窗 / notification 系统通知 / none 静默
-NOTIFY=notification
-
-# 调试模式：1 开启 / 0 关闭
-DEBUG=0
-CONFIG
   if [ -n "${SUDO_USER:-}" ]; then
-    chown "$SUDO_USER" "$CONFIG_FILE"
+    chown "$SUDO_USER" "$CONFIG_DIR"
   fi
-  echo "已生成默认配置：$CONFIG_FILE"
+  # 默认值只在 config.example 中维护一份，避免与仓库里的模板不一致
+  if curl -fsSL -o "$CONFIG_FILE" "$CONFIG_URL"; then
+    if [ -n "${SUDO_USER:-}" ]; then
+      chown "$SUDO_USER" "$CONFIG_FILE"
+    fi
+    echo "已生成默认配置：$CONFIG_FILE"
+  else
+    rm -f "$CONFIG_FILE"
+    echo "未能下载默认配置模板，可稍后手动创建 $CONFIG_FILE。" >&2
+  fi
 fi
 
 echo

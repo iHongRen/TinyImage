@@ -5,6 +5,13 @@ set -euo pipefail
 cd "$(cd "$(dirname "$0")" && pwd)"
 
 APP_VERSION="${1:-0.0.0}"
+case "$APP_VERSION" in
+  v*) APP_VERSION="${APP_VERSION#v}" ;;
+esac
+if ! printf '%s' "$APP_VERSION" | grep -Eq '^[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
+  echo "版本号格式应为 x.y 或 x.y.z：$APP_VERSION" >&2
+  exit 1
+fi
 STUB="/System/Library/CoreServices/Automator Application Stub.app"
 APP="dist/TinyImage.app"
 PLIST="$APP/Contents/Info.plist"

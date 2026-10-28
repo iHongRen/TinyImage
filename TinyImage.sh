@@ -7,8 +7,8 @@
 TINIFY_IMAGE_API_KEY_HARDCODED=""  # 可在此处直接设置API Key, 优先级高于环境变量
 
 # 成功后的提示方式配置
-# "dialog" - 弹窗提示（默认）
-# "notification" - 系统通知
+# "dialog" - 弹窗提示
+# "notification" - 系统通知（默认）
 # "none" - 不显示提示
 TINIFY_SUCCESS_NOTIFICATION_TYPE_HARDCODED=""  # 可在此处直接设置提示方式, 优先级高于环境变量
 
@@ -188,6 +188,11 @@ log_debug() {
     fi
 }
 
+# 转义 AppleScript 字符串中的反斜杠和双引号
+as_escape() {
+    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
 # ==== 通知函数 ====
 show_folder_dialog() {
     local title="$1"
@@ -201,6 +206,10 @@ show_folder_dialog() {
             local dialog_text
             local cancel_text
             local open_text
+            local e_title e_message e_folder
+            e_title=$(as_escape "$title")
+            e_message=$(as_escape "$message")
+            e_folder=$(as_escape "$folder_path")
             if [ "$LANG_CODE" = "zh" ]; then
                 dialog_text="是否打开压缩后的文件夹？"
                 cancel_text="取消"
@@ -226,11 +235,11 @@ set dialogY to 50
 
 -- 显示对话框在指定位置
 activate
-set openFolder to display dialog "$title" & return & return & "$message" & return & return & "$dialog_text" buttons {"$cancel_text", "$open_text"} default button 2 with icon note giving up after 10
+set openFolder to display dialog "$e_title" & return & return & "$e_message" & return & return & "$dialog_text" buttons {"$cancel_text", "$open_text"} default button 2 with icon note giving up after 10
 
 if button returned of openFolder is "$open_text" then
     tell application "Finder"
-        open folder (POSIX file "$folder_path")
+        open folder (POSIX file "$e_folder")
         activate
     end tell
 end if
@@ -246,8 +255,12 @@ send_notification() {
     
     # 检查是否在 macOS 上
     if [[ "$OSTYPE" == "darwin"* ]]; then
+        local e_title e_message e_sound
+        e_title=$(as_escape "$title")
+        e_message=$(as_escape "$message")
+        e_sound=$(as_escape "$sound")
         # 使用 osascript 发送通知
-        osascript -e "display notification \"$message\" with title \"$title\" sound name \"$sound\"" 2>/dev/null || true
+        osascript -e "display notification \"$e_message\" with title \"$e_title\" sound name \"$e_sound\"" 2>/dev/null || true
     fi
 }
 
@@ -279,8 +292,8 @@ show_usage() {
     log_info "  TINIFY_IMAGE_API_KEY - Tinify API 密钥" "  TINIFY_IMAGE_API_KEY - Tinify API key"
     log_info "  DEBUG - 设置为1启用调试模式" "  DEBUG - Set to 1 to enable debug mode"
     log_info "  TINIFY_SUCCESS_NOTIFICATION_TYPE - 成功后的提示方式:" "  TINIFY_SUCCESS_NOTIFICATION_TYPE - Success notification type:"
-    log_info "    dialog - 弹窗提示（默认）" "    dialog - Dialog prompt (default)"
-    log_info "    notification - 系统通知" "    notification - System notification"
+    log_info "    dialog - 弹窗提示" "    dialog - Dialog prompt"
+    log_info "    notification - 系统通知（默认）" "    notification - System notification (default)"
     log_info "    none - 不显示提示" "    none - No notification"
     log_info "配置文件: $TINIFY_CONFIG_FILE (API_KEY / NOTIFY / DEBUG)" "Config file: $TINIFY_CONFIG_FILE (API_KEY / NOTIFY / DEBUG)"
     log_info "  优先级: 脚本内硬编码 > 环境变量 > 配置文件 > shell profile > 默认值" "  Priority: hardcoded in script > environment variables > config file > shell profiles > defaults"
@@ -313,39 +326,14 @@ get_api_key() {
         api_key=$(get_env_from_profiles "TINIFY_IMAGE_API_KEY")
     fi
     if [ -z "$api_key" ]; then
+        # 提示信息走 stderr，避免被调用方当成返回值捕获
         log_error "错误: 未设置 TINIFY_IMAGE_API_KEY" "Error: TINIFY_IMAGE_API_KEY not set"
-        log_info "请设置环境变量: export TINIFY_IMAGE_API_KEY=\"your_api_key\"" "Please set environment variable: export TINIFY_IMAGE_API_KEY=\"your_api_key\""
-        log_info "或在脚本中设置 TINIFY_IMAGE_API_KEY_HARDCODED" "Or set TINIFY_IMAGE_API_KEY_HARDCODED in the script"
-        log_info "或将环境变量添加到 ~/.zshrc, ~/.bash_profile, ~/.bashrc 或 ~/.profile 文件中" "Or add the environment variable to ~/.zshrc, ~/.bash_profile, ~/.bashrc or ~/.profile"
-        exit 1
-    fi
-    echo "$api_key"
-}
-
-validate_api_key() {
-    local api_key="$1"
-    local response
-    
-    response=$(curl -s -u "api:$api_key" "https://api.tinify.com/shrink" \
-        -H "Content-Type: application/json" \
-        -d '{}' \
-        -w "%{http_code}")
-    
-    local http_code="${response: -3}"
-    
-    if [ "$http_code" != "400" ]; then
-        local title
-        local message
-        title=$(msg "TinyImage - API 验证失败" "TinyImage - API validation failed")
-        if [ "$http_code" = "401" ]; then
-            log_error "错误: API Key 无效" "Error: Invalid API Key"
-        else
-            log_error "错误: API 验证失败 (HTTP $http_code)" "Error: API validation failed (HTTP $http_code)"
-        fi
+        log_error "请设置环境变量: export TINIFY_IMAGE_API_KEY=\"your_api_key\"" "Please set environment variable: export TINIFY_IMAGE_API_KEY=\"your_api_key\""
+        log_error "或在 ~/.config/tinyimage/config 中设置 API_KEY" "Or set API_KEY in ~/.config/tinyimage/config"
+        log_error "或将环境变量添加到 ~/.zshrc, ~/.bash_profile, ~/.bashrc 或 ~/.profile 文件中" "Or add the environment variable to ~/.zshrc, ~/.bash_profile, ~/.bashrc or ~/.profile"
         return 1
     fi
-    
-    return 0
+    echo "$api_key"
 }
 
 # ==== 文件处理 ====
@@ -362,125 +350,108 @@ is_supported_format() {
     return 1
 }
 
+# 递归输出目录下的图片（NUL 分隔，兼容含换行的文件名）
+# 跳过 .app 应用包和历次生成的 tinified 输出目录
 find_images_in_directory() {
     local dir="$1"
-    
-    find "$dir" -maxdepth 1 -type f | while read -r file; do
+
+    find -H "$dir" -mindepth 1 \
+        \( -iname '*.app' -o -name 'tinified' -o -name 'tinified(*)' \) -prune -o \
+        -type f -print0 2>/dev/null | while IFS= read -r -d '' file; do
         if is_supported_format "$file"; then
-            echo "$file"
+            printf '%s\0' "$file"
         fi
     done
 }
 
 # ==== 压缩功能 ====
+# 通过 stdin 传入凭据，避免 API Key 出现在进程参数里
+curl_tinify() {
+    local api_key="$1"
+    shift
+    printf 'user = "api:%s"\n' "$api_key" | curl -K - "$@"
+}
+
 compress_image() {
     local input_file="$1"
     local output_file="$2"
     local api_key="$3"
-    
+
     log_debug "开始压缩: $input_file -> $output_file"
-    
-    # 创建输出目录
-    local output_dir
-    output_dir=$(dirname "$output_file")
-    mkdir -p "$output_dir"
-    
-    # 调用 Tinify API
-    local temp_response=$(mktemp)
-    local temp_headers=$(mktemp)
-    
+
+    local temp_response
+    local temp_output="$output_file.part"
+    temp_response=$(mktemp)
+
     # 检测文件MIME类型
     local mime_type="application/octet-stream"
     if command -v file >/dev/null 2>&1; then
         mime_type=$(file -b --mime-type "$input_file" 2>/dev/null || echo "application/octet-stream")
     fi
-    
+
     log_debug "文件MIME类型: $mime_type"
-    
+
     # 使用curl获取响应和HTTP状态码
     local http_code
-    http_code=$(curl -s -u "api:$api_key" "https://api.tinify.com/shrink" \
+    http_code=$(curl_tinify "$api_key" -sS --connect-timeout 10 --max-time 120 --retry 2 \
+        "https://api.tinify.com/shrink" \
         --data-binary "@$input_file" \
         -H "Content-Type: $mime_type" \
         -o "$temp_response" \
         -w "%{http_code}")
-    
+
     log_debug "HTTP状态码: $http_code"
-    
+
     local json_response
     json_response=$(cat "$temp_response")
-    
+
     if [ "$DEBUG_MODE" = "1" ] && [ -s "$temp_response" ]; then
         log_debug "API响应: $(echo "$json_response" | head -c 200)..."
     fi
-    
+
     if [ "$http_code" != "201" ]; then
         local error_message="HTTP $http_code"
-        if [ -f "$temp_response" ] && [ -s "$temp_response" ]; then
-            if command -v jq >/dev/null 2>&1 && echo "$json_response" | jq -e . >/dev/null 2>&1; then
-                error_message=$(echo "$json_response" | jq -r '.error // .message // "Unknown error"')
-            fi
+        if [ -s "$temp_response" ] && command -v jq >/dev/null 2>&1 && echo "$json_response" | jq -e . >/dev/null 2>&1; then
+            error_message=$(echo "$json_response" | jq -r '.error // .message // "Unknown error"')
         fi
-        local title
-        local message
         log_error "压缩失败 $input_file: $error_message" "Compression failed $input_file: $error_message"
-        # 清理临时文件
-        rm -f "$temp_response" "$temp_headers"
+        rm -f "$temp_response"
         return 1
     fi
-    
+
     # 检查响应是否为空
     if [ ! -s "$temp_response" ]; then
-        local title
-        local message
         log_error "API 返回空响应: $input_file" "API returned empty response: $input_file"
-        # 清理临时文件
-        rm -f "$temp_response" "$temp_headers"
+        rm -f "$temp_response"
         return 1
     fi
-    
+
     # 获取下载URL
     local download_url
-    if ! download_url=$(echo "$json_response" | jq -r '.output.url'); then
-        local title
-        local message
+    download_url=$(echo "$json_response" | jq -r '.output.url // empty')
+    if [ -z "$download_url" ]; then
         log_error "解析响应失败: $input_file" "Failed to parse response: $input_file"
-        # 清理临时文件
-        rm -f "$temp_response" "$temp_headers"
+        rm -f "$temp_response"
         return 1
     fi
 
-    
-    # 下载压缩后的图片
-    if ! curl -s -u "api:$api_key" "$download_url" -o "$output_file"; then
-        local title
-        local message
+    # 先落临时文件，下载失败或内容为空时不留半成品
+    if ! curl_tinify "$api_key" -fsS --connect-timeout 10 --max-time 300 --retry 2 \
+        "$download_url" -o "$temp_output"; then
         log_error "下载失败: $output_file" "Download failed: $output_file"
-        # 清理临时文件
-        rm -f "$temp_response" "$temp_headers"
+        rm -f "$temp_response" "$temp_output"
         return 1
     fi
-    
-    # 清理临时文件
-    rm -f "$temp_response" "$temp_headers"
+    if [ ! -s "$temp_output" ]; then
+        log_error "下载内容为空: $output_file" "Downloaded file is empty: $output_file"
+        rm -f "$temp_response" "$temp_output"
+        return 1
+    fi
+    mv -f "$temp_output" "$output_file"
+
+    rm -f "$temp_response"
 
     log_info "✅ 压缩完成: $output_file" "✅ Compressed: $output_file"
-
-    # 已使用的压缩次数
-    # local compression_count
-    # compression_count=$(curl -s -I \
-    # -u "api:$api_key" \
-    # -X POST https://api.tinify.com/shrink \
-    # | grep -i "Compression-Count" \
-    # | awk '{print $2}' \
-    # | tr -d '\r')
- 
- 
-
-    # if [ -n "$compression_count" ]; then
-    #     log_info "📊 已使用 $compression_count 次压缩" "📊 "Compression count used: $compression_count""
-    # fi
-    
     return 0
 }
 
@@ -488,186 +459,140 @@ compress_image() {
 process_files() {
     local api_key="$1"
     shift
-    
+
     local success_count=0
     local fail_count=0
     local skip_count=0
-    local last_output_dir=""  # 跟踪最后一个输出目录
-    
-    # 创建临时文件来存储目录和文件的映射
-    local temp_dir_list=$(mktemp)
-    local temp_file_list=$(mktemp)
-    local temp_results=$(mktemp)
-    
-    # 清理函数
+    local last_output_dir=""
+
+    local temp_files temp_dirs temp_map
+    temp_files=$(mktemp)
+    temp_dirs=$(mktemp)
+    temp_map=$(mktemp)
+
     cleanup() {
-        rm -f "$temp_dir_list" "$temp_file_list" "$temp_results"
+        rm -f "$temp_files" "$temp_dirs" "$temp_map"
     }
     trap cleanup EXIT
-    
-    # 收集所有需要处理的文件
+
+    # 收集所有需要处理的文件（NUL 分隔，兼容含换行的文件名）
     for arg in "$@"; do
         # 跳过空参数和 .app 应用自身
         if [ -z "$arg" ] || [[ "$arg" == *.app ]]; then
             continue
         fi
-        
-        # 检查是否存在
+
         if [ ! -e "$arg" ]; then
-            local title
-            local message
             log_error "文件或目录不存在: $arg" "File or directory not found: $arg"
-            echo "fail" >> "$temp_results"
+            fail_count=$((fail_count + 1))
             continue
         fi
-        
-        # 转换为绝对路径
+
         local abs_arg
         abs_arg=$(to_absolute_path "$arg")
-        
+
         if [ -d "$abs_arg" ]; then
-            # 处理目录
-            find_images_in_directory "$abs_arg" | while read -r file; do
-                if [ -n "$file" ]; then
-                    local dir
-                    dir=$(dirname "$file")
-                    echo "$dir|$file" >> "$temp_file_list"
-                fi
-            done
+            find_images_in_directory "$abs_arg" >> "$temp_files"
         elif [ -f "$abs_arg" ]; then
-            # 处理单个文件
             if is_supported_format "$abs_arg"; then
-                local dir
-                dir=$(dirname "$abs_arg")
-                echo "$dir|$abs_arg" >> "$temp_file_list"
+                printf '%s\0' "$abs_arg" >> "$temp_files"
             else
                 log_info "跳过不支持格式: $abs_arg" "Skipped unsupported format: $abs_arg"
-                echo "skip" >> "$temp_results"
+                skip_count=$((skip_count + 1))
             fi
         else
             # 这不应该发生，因为我们已经检查了存在性
             log_error "未知文件类型: $abs_arg" "Unknown file type: $abs_arg"
-            echo "fail" >> "$temp_results"
+            fail_count=$((fail_count + 1))
         fi
     done
 
-  
-    # 获取所有唯一的目录
-    # 去重 temp_file_list（按文件路径），避免同一文件被多次列出
-    if [ -f "$temp_file_list" ] && [ -s "$temp_file_list" ]; then
-        if [ "$DEBUG_MODE" = "1" ]; then
-            log_debug "原始待处理列表:"
-            sed -n '1,200p' "$temp_file_list" 2>/dev/null || true
-        fi
+    # 去重，避免同一文件被多次压缩
+    sort -zu "$temp_files" -o "$temp_files"
 
-        local temp_file_list_unique=$(mktemp)
-        cut -d'|' -f2 "$temp_file_list" | sort -u | while read -r unique_file; do
-            if [ -n "$unique_file" ]; then
-                local dir
-                dir=$(dirname "$unique_file")
-                echo "$dir|$unique_file" >> "$temp_file_list_unique"
+    if [ "$DEBUG_MODE" = "1" ]; then
+        log_debug "待处理文件:"
+        while IFS= read -r -d '' f; do log_debug "  $f"; done < "$temp_files"
+    fi
+
+    # 收集涉及的源目录，每个目录对应一个本次新建的输出目录：tinified、tinified(1)……
+    while IFS= read -r -d '' f; do
+        printf '%s\0' "$(dirname "$f")" >> "$temp_dirs"
+    done < "$temp_files"
+    sort -zu "$temp_dirs" -o "$temp_dirs"
+
+    # 用 mkdir 的原子性占位，避免并发运行选中同一个目录
+    while IFS= read -r -d '' d; do
+        local n=0 out
+        while :; do
+            if [ "$n" -eq 0 ]; then
+                out="$d/tinified"
+            else
+                out="$d/tinified($n)"
+            fi
+            if mkdir "$out" 2>/dev/null; then
+                printf '%s\0%s\0' "$d" "$out" >> "$temp_map"
+                break
+            fi
+            n=$((n + 1))
+            if [ "$n" -ge 1000 ]; then
+                log_error "无法创建输出目录: $d" "Cannot create output directory: $d"
+                break
             fi
         done
+    done < "$temp_dirs"
 
-        # 用去重后的列表替换原列表
-        mv "$temp_file_list_unique" "$temp_file_list"
-
-        if [ "$DEBUG_MODE" = "1" ]; then
-            log_debug "去重后待处理列表:"
-            sed -n '1,200p' "$temp_file_list" 2>/dev/null || true
-        fi 
-    fi
-    
-    if [ -f "$temp_file_list" ] && [ -s "$temp_file_list" ]; then
-        cut -d'|' -f1 "$temp_file_list" | sort -u > "$temp_dir_list"
-        
-        # 处理每个目录
-        while read -r dir; do
-            if [ -n "$dir" ]; then
-                # 计算输出目录名称（选择一个不存在的名称）
-                local tinified_dir="$dir/tinified"
-                local counter=1
-                while [ -d "$tinified_dir" ]; do
-                    tinified_dir="$dir/tinified($counter)"
-                    counter=$((counter + 1))
-                done
-
-                # 标记为我们将创建的新目录（尚未创建）
-                local created_dir=0
-                local dir_success_count=0
-
-                # 先创建目录，如果没有任何成功则在稍后删除
-                if mkdir -p "$tinified_dir"; then
-                    created_dir=1
-                fi
-
-                # 处理该目录中的文件（使用process substitution以便在同一shell中更新变量）
-                while IFS='|' read -r file_dir file_path; do
-                    if [ -n "$file_path" ]; then
-                        local filename
-                        filename=$(basename "$file_path")
-                        local output_file="$tinified_dir/$filename"
-
-                        if compress_image "$file_path" "$output_file" "$api_key"; then
-                            echo "success" >> "$temp_results"
-                            dir_success_count=$((dir_success_count + 1))
-                            # 记录最后一个非空的输出目录
-                            last_output_dir="$tinified_dir"
-                        else
-                            echo "fail" >> "$temp_results"
-                        fi
-                    fi
-                done < <(grep "^$dir|" "$temp_file_list")
-
-                # 如果我们创建了该目录但没有任何成功，则删除该空目录
-                if [ "$created_dir" -eq 1 ] && [ "$dir_success_count" -eq 0 ]; then
-                    # 尝试使用 rmdir 删除空目录；如果非空则强制删除以满足用户要求
-                    if rmdir "$tinified_dir" 2>/dev/null; then
-                        log_info "已移除空目录: $tinified_dir" "Removed empty directory: $tinified_dir"
-                    else
-                        rm -rf "$tinified_dir" 2>/dev/null || true
-                        log_info "已移除空目录（强制）: $tinified_dir" "Removed empty directory (forced): $tinified_dir"
-                    fi
-                    # 如果刚刚删除的是 last_output_dir，则清空该变量
-                    if [ "$last_output_dir" = "$tinified_dir" ]; then
-                        last_output_dir=""
-                    fi
-                fi
+    get_outdir() {
+        local needle="$1" d o
+        while IFS= read -r -d '' d && IFS= read -r -d '' o; do
+            if [ "$d" = "$needle" ]; then
+                printf '%s' "$o"
+                return 0
             fi
-        done < "$temp_dir_list"
-    fi
-    
-    # 统计结果
-    success_count=0
-    fail_count=0
-    skip_count=0
-    
-    if [ -f "$temp_results" ] && [ -s "$temp_results" ]; then
-        # 使用wc -l来计算行数，更可靠
-        success_count=$(grep "success" "$temp_results" 2>/dev/null | wc -l | tr -d ' ')
-        fail_count=$(grep "fail" "$temp_results" 2>/dev/null | wc -l | tr -d ' ')
-        skip_count=$(grep "skip" "$temp_results" 2>/dev/null | wc -l | tr -d ' ')
-        
-        # 确保是数字，如果为空则设为0
-        case "$success_count" in
-            ''|*[!0-9]*) success_count=0 ;;
-        esac
-        case "$fail_count" in
-            ''|*[!0-9]*) fail_count=0 ;;
-        esac
-        case "$skip_count" in
-            ''|*[!0-9]*) skip_count=0 ;;
-        esac
-    fi
-    
+        done < "$temp_map"
+        return 1
+    }
+
+    # 逐个压缩；输出目录按源目录一对一映射，不做任何名称匹配
+    while IFS= read -r -d '' f; do
+        local dir outdir out
+        dir=$(dirname "$f")
+        outdir=$(get_outdir "$dir")
+        if [ -z "$outdir" ]; then
+            log_error "压缩失败 $f: 无法创建输出目录" "Compression failed $f: cannot create output directory"
+            fail_count=$((fail_count + 1))
+            continue
+        fi
+        out="$outdir/$(basename "$f")"
+        if compress_image "$f" "$out" "$api_key"; then
+            success_count=$((success_count + 1))
+            last_output_dir="$outdir"
+        else
+            fail_count=$((fail_count + 1))
+        fi
+    done < "$temp_files"
+
+    # 删除本次创建但没有任何输出的空目录，同时统计有效输出目录
+    local outdir_count=0
+    local last_output_dir_seen=""
+    while IFS= read -r -d '' d && IFS= read -r -d '' out; do
+        [ -d "$out" ] || continue
+        if rmdir "$out" 2>/dev/null; then
+            continue
+        fi
+        outdir_count=$((outdir_count + 1))
+        last_output_dir_seen="$out"
+    done < "$temp_map"
+    last_output_dir="$last_output_dir_seen"
+
     # 显示总结
     log_info "" ""
     log_info "压缩完成 - 成功: $success_count | 失败: $fail_count | 跳过非支持格式: $skip_count" "Compression finished - Success: $success_count | Failed: $fail_count | Skipped unsupported: $skip_count"
-    
+
     # 显示成功通知（根据配置）
     if [ "$success_count" -gt 0 ] && [ -n "$last_output_dir" ]; then
-        local title=$(msg "TinyImage 压缩完成" "TinyImage Compression Complete")
-        local message
+        local title message
+        title=$(msg "TinyImage 压缩完成" "TinyImage Compression Complete")
         if [ "$fail_count" -eq 0 ]; then
             message=$(msg "成功压缩 $success_count 张图片" "Successfully compressed $success_count images")
         else
@@ -675,7 +600,6 @@ process_files() {
         fi
         show_success_notification "$title" "$message" "$last_output_dir"
     fi
-
 
     if [ "$fail_count" -eq 0 ]; then
         return 0
@@ -687,16 +611,16 @@ process_files() {
 # 检查传入的参数中是否存在受支持的图片（文件或目录中包含受支持图片）
 has_supported_images() {
     for arg in "$@"; do
-        # 转换为绝对路径
         local abs_arg
         abs_arg=$(to_absolute_path "$arg")
-        
+
         if [ -d "$abs_arg" ]; then
-            for ext in "${SUPPORTED_FORMATS[@]}"; do
-                if find "$abs_arg" -maxdepth 1 -type f -iname "*.${ext}" | grep -q .; then
-                    return 0
-                fi
-            done
+            local found
+            while IFS= read -r -d '' _; do
+                found=1
+                break
+            done < <(find_images_in_directory "$abs_arg")
+            [ -n "$found" ] && return 0
         elif [ -f "$abs_arg" ]; then
             if is_supported_format "$abs_arg"; then
                 return 0
@@ -722,8 +646,9 @@ main() {
         exit 1
     fi
 
-    # 获取 API Key
-    local api_key=$(get_api_key)
+    # 获取 API Key；缺失时 get_api_key 返回非零，必须在此终止
+    local api_key
+    api_key=$(get_api_key) || exit 1
 
     # 处理文件
     process_files "$api_key" "$@"
