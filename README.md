@@ -9,7 +9,7 @@
 ## 功能
 
 - Finder 工具栏一键压缩
-- 支持图片和文件夹批量处理（文件夹会递归处理子目录）
+- 支持图片和文件夹批量处理（文件夹会递归处理子目录，跳过隐藏目录、`.app` 与已生成的 `tinified`）
 - 支持 PNG、JPG、JPEG、WebP、AVIF 格式
 - 灵活提示（弹窗、通知或静默）
 - 每月免费压缩 500 张，无 5MB 限制，不够用可多申请几个API Key
@@ -81,8 +81,10 @@ echo $TINIFY_IMAGE_API_KEY
 
 ```bash
 mkdir -p ~/.config/tinyimage
-cp config.example ~/.config/tinyimage/config
+curl -fsSL https://raw.githubusercontent.com/iHongRen/TinyImage/main/config.example -o ~/.config/tinyimage/config
 ```
+
+已在仓库目录中时，也可以直接 `cp config.example ~/.config/tinyimage/config`。
 
 | 配置项 | 说明 | 默认 |
 |---|---|---|
@@ -116,6 +118,16 @@ cp config.example ~/.config/tinyimage/config
 | `dialog` | 弹窗提示（**推荐**） |
 | `notification` | 系统通知 |
 | `none` | 静默（无提示） |
+
+`dialog` 效果：
+
+![](./screenshots/dialog.png)
+
+`notification` 效果：
+
+![](./screenshots/notification.png)
+
+也可以直接写在配置文件 `~/.config/tinyimage/config` 里（`NOTIFY=dialog`），从 Finder 启动时同样生效。
 
 修改方法（同样替换 API Key）：
 ```bash
@@ -182,6 +194,8 @@ A: 用编辑器打开 `~/.config/tinyimage/config`（或 `~/.zshrc` / `~/.bash_p
 **Q: 如何方便快捷的管理各种配置文件**
 A: 推荐使用 [Configs](https://github.com/iHongRen/configEditor)，编辑保存后，环境变量自动生效
 
+![](./screenshots/config.png)
+
 ## 构建与发布（开发者）
 
 需要 macOS（App 由系统自带的 Automator Stub 组装）：
@@ -189,6 +203,7 @@ A: 推荐使用 [Configs](https://github.com/iHongRen/configEditor)，编辑保�
 ```bash
 ./build.sh 1.3.0     # 生成 dist/TinyImage.app
 ./release.sh 1.3.0   # 构建并上传 dist/TinyImage.dmg 与 dist/TinyImage.zip 到 GitHub Release
+bash tests/run.sh    # 运行回归测试（假 curl，无需真实 API Key）
 ```
 
 `release.sh` 依赖 [GitHub CLI](https://cli.github.com/)，要求当前分支已推送且工作区干净。

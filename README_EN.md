@@ -7,7 +7,7 @@ macOS image compression tool based on Tinify API - compress images with one clic
 ## Features
 
 - One-click compression from Finder toolbar
-- Batch process images and folders (subfolders are processed recursively)
+- Batch process images and folders (subfolders are processed recursively; hidden folders, `.app` bundles, and existing `tinified` folders are skipped)
 - Supports PNG, JPG, JPEG, WebP, AVIF formats
 - Flexible notifications (dialog, system notification, or silent)
 - 500 free compressions per month, no 5MB size limit, request additional API Keys if needed
@@ -79,8 +79,10 @@ You can also put settings in `~/.config/tinyimage/config`, which works even when
 
 ```bash
 mkdir -p ~/.config/tinyimage
-cp config.example ~/.config/tinyimage/config
+curl -fsSL https://raw.githubusercontent.com/iHongRen/TinyImage/main/config.example -o ~/.config/tinyimage/config
 ```
+
+If you already have the repo cloned, `cp config.example ~/.config/tinyimage/config` works too.
 
 | Key | Description | Default |
 |---|---|---|
@@ -191,6 +193,7 @@ Requires macOS (the app is assembled from the system Automator Stub):
 ```bash
 ./build.sh 1.3.0     # build dist/TinyImage.app
 ./release.sh 1.3.0   # build and upload dist/TinyImage.dmg and dist/TinyImage.zip to a GitHub Release
+bash tests/run.sh    # run regression tests (fake curl, no real API key needed)
 ```
 
 `release.sh` requires the [GitHub CLI](https://cli.github.com/), a clean working tree, and a branch that has been pushed.

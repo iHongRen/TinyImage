@@ -46,14 +46,14 @@ if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
   exit 1
 fi
 if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
-  echo "远程已存在 tag $TAG。" >&2
+  echo "远程已存在 tag ${TAG}。" >&2
   exit 1
 fi
 
 ./build.sh "$VERSION"
 APP="dist/TinyImage.app"
 if [ ! -d "$APP" ]; then
-  echo "未生成 $APP。" >&2
+  echo "未生成 ${APP}。" >&2
   exit 1
 fi
 

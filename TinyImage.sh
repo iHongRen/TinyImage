@@ -39,8 +39,6 @@ load_config_file() {
 }
 
 load_config_file
-
-DEBUG_MODE="${DEBUG:-${CONFIG_DEBUG:-0}}"     # 设置为1启用调试模式
 # =====================================================================
 
 # 支持的图片格式
@@ -97,6 +95,10 @@ get_env_from_profiles() {
 
     echo "$value"
 }
+
+# 调试模式，优先级与 API Key、提示方式一致
+DEBUG_MODE="${DEBUG:-${CONFIG_DEBUG:-$(get_env_from_profiles "DEBUG")}}"
+[ -n "$DEBUG_MODE" ] || DEBUG_MODE=0
 
 # 获取提示方式，优先级：硬编码 > 环境变量 > 默认
 get_success_notification_type() {
@@ -351,12 +353,12 @@ is_supported_format() {
 }
 
 # 递归输出目录下的图片（NUL 分隔，兼容含换行的文件名）
-# 跳过 .app 应用包和历次生成的 tinified 输出目录
+# 跳过隐藏目录、.app 应用包和历次生成的 tinified 输出目录
 find_images_in_directory() {
     local dir="$1"
 
     find -H "$dir" -mindepth 1 \
-        \( -iname '*.app' -o -name 'tinified' -o -name 'tinified(*)' \) -prune -o \
+        \( -name '.*' -o -iname '*.app' -o -name 'tinified' -o -name 'tinified(*)' \) -prune -o \
         -type f -print0 2>/dev/null | while IFS= read -r -d '' file; do
         if is_supported_format "$file"; then
             printf '%s\0' "$file"

@@ -7,6 +7,7 @@ REPO="iHongRen/TinyImage"
 APP="TinyImage"
 INSTALL_DIR="/Applications"
 DMG_URL="https://github.com/${REPO}/releases/latest/download/${APP}.dmg"
+ZIP_URL="https://github.com/${REPO}/releases/latest/download/${APP}.zip"
 
 # 用 sudo 安装时，配置要写到真实用户的家目录
 if [ -n "${SUDO_USER:-}" ]; then
@@ -34,40 +35,51 @@ fi
 
 TMP="$(mktemp -d)"
 MOUNT="$TMP/mnt"
+NEW="$INSTALL_DIR/.${APP}.app.new"
 mkdir -p "$MOUNT"
 cleanup() {
   hdiutil detach "$MOUNT" >/dev/null 2>&1 || true
-  rm -rf "$TMP"
+  rm -rf "$TMP" "$NEW"
 }
 trap cleanup EXIT
 
+SRC_APP=""
 echo "下载 ${APP}.dmg"
-if ! curl -fL --progress-bar -o "$TMP/$APP.dmg" "$DMG_URL"; then
-  echo "下载失败，请确认 ${REPO} 已发布 ${APP}.dmg。" >&2
-  exit 1
+if curl -fL --progress-bar -o "$TMP/$APP.dmg" "$DMG_URL"; then
+  echo "挂载安装包"
+  if ! hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT" "$TMP/$APP.dmg" >/dev/null; then
+    echo "挂载 ${APP}.dmg 失败。" >&2
+    exit 1
+  fi
+  SRC_APP="$MOUNT/$APP.app"
+else
+  echo "DMG 下载失败，改用 ZIP 安装包"
+  if ! curl -fL --progress-bar -o "$TMP/$APP.zip" "$ZIP_URL"; then
+    echo "下载失败，请确认 ${REPO} 已发布 ${APP}.dmg 或 ${APP}.zip。" >&2
+    exit 1
+  fi
+  if ! ditto -x -k "$TMP/$APP.zip" "$TMP/zip"; then
+    echo "解压 ${APP}.zip 失败。" >&2
+    exit 1
+  fi
+  SRC_APP="$TMP/zip/$APP.app"
 fi
 
-echo "挂载安装包"
-if ! hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT" "$TMP/$APP.dmg" >/dev/null; then
-  echo "挂载 ${APP}.dmg 失败。" >&2
-  exit 1
-fi
-if [ ! -d "$MOUNT/$APP.app" ]; then
+if [ ! -d "$SRC_APP" ]; then
   echo "安装包中未找到 ${APP}.app。" >&2
   exit 1
 fi
 
 # 签名校验只作为提示：早期版本是 ad-hoc 签名，资源稍有改动就校验不通过，
 # 不能因此拒绝安装，但要让用户知道安装包完整性存疑。
-if ! codesign --verify --deep --strict "$MOUNT/$APP.app" >/dev/null 2>&1; then
+if ! codesign --verify --deep --strict "$SRC_APP" >/dev/null 2>&1; then
   echo "警告：$APP.app 签名校验未通过，安装包可能已损坏或被改动。" >&2
 fi
 
 echo "安装到 $INSTALL_DIR"
 # 先复制到临时名再替换，避免中途失败留下残缺的 App
-NEW="$INSTALL_DIR/.${APP}.app.new"
 rm -rf "$NEW"
-cp -R "$MOUNT/$APP.app" "$NEW"
+cp -R "$SRC_APP" "$NEW"
 rm -rf "$INSTALL_DIR/$APP.app"
 mv "$NEW" "$INSTALL_DIR/$APP.app"
 
@@ -93,7 +105,7 @@ else
     echo "已生成默认配置：$CONFIG_FILE"
   else
     rm -f "$CONFIG_FILE"
-    echo "未能下载默认配置模板，可稍后手动创建 $CONFIG_FILE。" >&2
+    echo "未能下载默认配置模板，可稍后手动创建 ${CONFIG_FILE}。" >&2
   fi
 fi
 
