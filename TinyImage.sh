@@ -12,8 +12,35 @@ TINIFY_IMAGE_API_KEY_HARDCODED=""  # 可在此处直接设置API Key, 优先级�
 # "none" - 不显示提示
 TINIFY_SUCCESS_NOTIFICATION_TYPE_HARDCODED=""  # 可在此处直接设置提示方式, 优先级高于环境变量
 
+# ==== 配置文件（可选） =================================================
+# 文件位置: ~/.config/tinyimage/config，内容为 shell 语法: API_KEY=xxx
+#   mkdir -p ~/.config/tinyimage
+#   cp config.example ~/.config/tinyimage/config
+# 优先级: 硬编码 > 环境变量 > 配置文件 > shell profile > 默认值
+TINIFY_CONFIG_FILE="$HOME/.config/tinyimage/config"
+CONFIG_API_KEY=""
+CONFIG_NOTIFY=""
+CONFIG_DEBUG=""
 
-DEBUG_MODE="${DEBUG:-0}"     # 设置为1启用调试模式
+load_config_file() {
+    [ -f "$TINIFY_CONFIG_FILE" ] || return 0
+    local values
+    # 在子 shell 中读取，避免配置文件里的其他变量污染脚本
+    values=$(
+        unset API_KEY NOTIFY DEBUG
+        . "$TINIFY_CONFIG_FILE" >/dev/null 2>&1 || exit 0
+        printf '%s\n%s\n%s\n' "${API_KEY:-}" "${NOTIFY:-}" "${DEBUG:-}"
+    ) || return 0
+    {
+        IFS= read -r CONFIG_API_KEY
+        IFS= read -r CONFIG_NOTIFY
+        IFS= read -r CONFIG_DEBUG
+    } <<< "$values"
+}
+
+load_config_file
+
+DEBUG_MODE="${DEBUG:-${CONFIG_DEBUG:-0}}"     # 设置为1启用调试模式
 # =====================================================================
 
 # 支持的图片格式
@@ -76,6 +103,9 @@ get_success_notification_type() {
     local notif_type="$TINIFY_SUCCESS_NOTIFICATION_TYPE_HARDCODED"
     if [ -z "$notif_type" ]; then
         notif_type="$TINIFY_SUCCESS_NOTIFICATION_TYPE"
+    fi
+    if [ -z "$notif_type" ]; then
+        notif_type="$CONFIG_NOTIFY"
     fi
     if [ -z "$notif_type" ]; then
         notif_type=$(get_env_from_profiles "TINIFY_SUCCESS_NOTIFICATION_TYPE")
@@ -252,6 +282,8 @@ show_usage() {
     log_info "    dialog - 弹窗提示（默认）" "    dialog - Dialog prompt (default)"
     log_info "    notification - 系统通知" "    notification - System notification"
     log_info "    none - 不显示提示" "    none - No notification"
+    log_info "配置文件: $TINIFY_CONFIG_FILE (API_KEY / NOTIFY / DEBUG)" "Config file: $TINIFY_CONFIG_FILE (API_KEY / NOTIFY / DEBUG)"
+    log_info "  优先级: 脚本内硬编码 > 环境变量 > 配置文件 > shell profile > 默认值" "  Priority: hardcoded in script > environment variables > config file > shell profiles > defaults"
 }
 
 # ==== 检查依赖 ====
@@ -273,6 +305,9 @@ get_api_key() {
     local api_key="$TINIFY_IMAGE_API_KEY_HARDCODED"
     if [ -z "$api_key" ]; then
         api_key="$TINIFY_IMAGE_API_KEY"
+    fi
+    if [ -z "$api_key" ]; then
+        api_key="$CONFIG_API_KEY"
     fi
     if [ -z "$api_key" ]; then
         api_key=$(get_env_from_profiles "TINIFY_IMAGE_API_KEY")

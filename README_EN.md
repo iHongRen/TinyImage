@@ -63,6 +63,25 @@ If it displays your API Key, configuration is successful ✅
 
 
 
+### Config File (Optional)
+
+You can also put settings in `~/.config/tinyimage/config`, which works even when the app is launched from Finder:
+
+```bash
+mkdir -p ~/.config/tinyimage
+cp config.example ~/.config/tinyimage/config
+```
+
+| Key | Description | Default |
+|---|---|---|
+| `API_KEY` | Tinify API Key | empty |
+| `NOTIFY` | Notification type: `dialog` / `notification` / `none` | `notification` |
+| `DEBUG` | Debug mode: `1` on / `0` off | `0` |
+
+Priority: hardcoded in script > environment variables > config file > shell profiles > defaults. Existing environment-variable setups keep working unchanged; the config file is read on every run, so edits take effect immediately.
+
+
+
 ### Start Using
 
 1. Select images or folders in Finder

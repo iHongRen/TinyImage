@@ -1,0 +1,14 @@
+# TinyImage 配置示例
+# 复制到 ~/.config/tinyimage/config 后生效：
+#   mkdir -p ~/.config/tinyimage
+#   cp config.example ~/.config/tinyimage/config
+# 优先级：脚本内硬编码 > 环境变量 > 本文件 > ~/.zshrc 等 profile > 默认值。
+
+# Tinify API Key，前往 https://tinify.com/developers 免费申请
+API_KEY=
+
+# 提示方式：dialog 弹窗 / notification 系统通知 / none 静默
+NOTIFY=notification
+
+# 调试模式：1 开启 / 0 关闭
+DEBUG=0

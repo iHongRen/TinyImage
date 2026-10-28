@@ -65,6 +65,25 @@ echo $TINIFY_IMAGE_API_KEY
 
 
 
+### 配置文件（可选）
+
+也可以把配置写入 `~/.config/tinyimage/config`，对从 Finder 直接启动的 App 同样生效：
+
+```bash
+mkdir -p ~/.config/tinyimage
+cp config.example ~/.config/tinyimage/config
+```
+
+| 配置项 | 说明 | 默认 |
+|---|---|---|
+| `API_KEY` | Tinify API Key | 空 |
+| `NOTIFY` | 提示方式：`dialog` 弹窗 / `notification` 系统通知 / `none` 静默 | `notification` |
+| `DEBUG` | 调试模式：`1` 开启 / `0` 关闭 | `0` |
+
+优先级：脚本内硬编码 > 环境变量 > 配置文件 > `~/.zshrc` 等 profile > 默认值。已有的环境变量配置无需改动，继续有效；配置文件在每次运行时读取，改完立即生效。
+
+
+
 ### 开始使用
 
 1. 在 Finder 中选择要压缩的图片或文件夹
